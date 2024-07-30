@@ -9,22 +9,20 @@ from airflow.models import Variable
 from airflow.exceptions import AirflowException
 from airflow.decorators import task
 from colorama import init, Fore, Back, Style
+from .config import NUM_PARTITIONS, DEV_PAGE_LIMIT
 
 from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-NUM_PARTITIONS = 4
 ENVIRONMENT = os.getenv("environment", "development")
 STORAGE_DIR = os.getenv("STORAGE_DIR")
 LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
-DEV_PAGE_LIMIT = 10
 
 
 def log_progress(ti, message):
     ti.xcom_push(key='progress_log', value=message)
     print(Back.GREEN + message + Style.RESET_ALL)
-#    print(message)
 
 def process_page(page_content, page_number, parser):
     temp_file = f"temp_page_{page_number}.pdf"
@@ -64,6 +62,7 @@ def download_pdf_task(**kwargs):
     
     return fname
 
+
 @task
 def process_pdf_partition(partition_number, pdf_file, **kwargs):
     ti = kwargs['ti']
@@ -87,8 +86,8 @@ def process_pdf_partition(partition_number, pdf_file, **kwargs):
             log_progress(ti, f"Development mode: Processing only the first {DEV_PAGE_LIMIT} pages")
         
         pages_per_partition = max(1, total_pages // NUM_PARTITIONS)
-        start_page = (partition_number - 1) * pages_per_partition
-        end_page = min(start_page + pages_per_partition, total_pages)
+        start_page = partition_number * pages_per_partition
+        end_page = min((partition_number + 1) * pages_per_partition, total_pages)
 
         all_documents = []
         for i in range(start_page, end_page):
@@ -102,7 +101,7 @@ def process_pdf_partition(partition_number, pdf_file, **kwargs):
         })
         df.to_pickle(output_file)
 
-        log_progress(ti, f"Finished processing PDF partition {partition_number}")
+        log_progress(ti, f"Finished processing PDF partition {partition_number}, extracted {len(all_documents)} documents.")
     else:
         log_progress(ti, f"Skipping partition {partition_number} as it already exists")
 

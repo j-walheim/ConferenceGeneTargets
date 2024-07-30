@@ -10,6 +10,7 @@ import sys
 sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 
 from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task
+from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS
 dotenv.load_dotenv()
 
 # Configuration
@@ -23,10 +24,10 @@ DEFAULT_ARGS = {
     'retry_delay': timedelta(minutes=5),
 }
 
-NUM_PARTITIONS = 4
+
 ENVIRONMENT = os.getenv("environment", "development")
 STORAGE_DIR = os.getenv("storage_dir", "/teamspace/studios/this_studio/ConferenceGeneTargetsRAG/data/processed_airflow")
-MAX_ACTIVE_TASKS = 4
+
 
 with DAG(
     dag_id=f'pdf_processing_pipeline_{ENVIRONMENT}',
@@ -39,9 +40,11 @@ with DAG(
     
     pdf_file = download_pdf_task()
 
+
     with TaskGroup(group_id='process_partitions') as process_group:
-        partition_tasks = [process_pdf_partition.override(task_id=f'process_partition_{i}')(partition_number=i, pdf_file=pdf_file) for i in range(1, NUM_PARTITIONS + 1)]
+        partition_tasks = [process_pdf_partition.override(task_id=f'process_partition_{i}')(partition_number=i, pdf_file=pdf_file) for i in range(0, NUM_PARTITIONS)]
 
-   # combined_pdf = combine_pdf_partitions()
 
-    pdf_file >> process_group #>> combined_pdf
+    combined_pdf = combine_pdf_partitions()
+
+    pdf_file >> process_group >> combined_pdf
