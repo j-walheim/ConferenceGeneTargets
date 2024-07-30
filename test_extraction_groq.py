@@ -19,21 +19,39 @@ load_dotenv()
 
 # Initialize the Groq AI model
 llm = ChatGroq(
-    model="mixtral-8x7b-32768",
+#    model="mixtral-8x7b-32768",
+    model='llama3-groq-70b-8192-tool-use-preview',
     temperature=0,
     max_tokens=None,
     timeout=None,
     max_retries=2
 )
 
-# Define the prompt template
+# # Define the prompt template
+# prompt = ChatPromptTemplate.from_messages([
+#     ("system", """You are an expert at extracting information from academic abstracts. 
+#     Extract the requested information accurately and completely. 
+#     Pay attention to details like author affiliations and ensure the abstract text is complete with proper whitespace."""),
+#     ("human", "{text}")
+# ])
+
+
 prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are an expert at extracting information from academic abstracts. 
-    Extract the requested information accurately and completely. 
-    Pay attention to details like author affiliations and ensure the abstract text is complete with proper whitespace."""),
+    ("system", """You are an expert at extracting information from academic abstracts, with a focus on genetics and oncology. Your task is to accurately and completely extract the requested information, paying close attention to details.
+
+    Follow these guidelines strictly:
+    1. Extract the abstract number, title, authors (with affiliations), and full abstract text.
+    2. For genes, use only official HUGO gene symbols. If a gene is mentioned using a different nomenclature, convert it to the HUGO symbol.
+    3. For cancer indications, use the OncoTree nomenclature. If the abstract uses a different nomenclature, convert it to the appropriate OncoTree term.
+    4. When extracting gene-disease interactions, provide the gene (HUGO symbol), disease (OncoTree term if cancer), a brief description of the interaction, and the directionality if mentioned.
+    5. Ensure the abstract text is complete and properly formatted with correct whitespace.
+    6. If any information is not available or cannot be determined with certainty, use 'n/a' (not applicable) for that field. This applies to all fields including gene symbols, disease names, descriptions, and directionality.
+    7. Never guess or infer information that is not explicitly stated in the abstract. If you are unsure about any information, use 'n/a'.
+    8. Do not attempt to fill in missing information based on context or general knowledge. If it's not in the abstract, it's 'n/a'.
+
+    Accuracy is paramount. It is better to use 'n/a' than to provide potentially incorrect information. Under no circumstances should you guess or make assumptions about any data."""),
     ("human", "{text}")
 ])
-
 
 # %% 
 # Create the extraction chain
