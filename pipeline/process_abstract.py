@@ -1,21 +1,17 @@
 # %% 
-from typing import List, Optional
-from langchain_core.pydantic_v1 import BaseModel, Field
+from typing import List
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
-from langchain.chains import LLMChain
 import pickle
-from defs.abstract_class import Author, GeneDisease, Abstract
-
+from defs.abstract_class import Abstract
+import json
 import os
-import getpass
 
 from dotenv import load_dotenv
 load_dotenv()
 
-def extract_abstract_info(fname_abstract):
+def extract_abstract_info(abstract_row):
     
-#    abstract = 
     
     # Initialize the Groq AI model
     llm = ChatGroq(
@@ -64,3 +60,10 @@ def extract_abstract_info(fname_abstract):
     # %% 
     # Create the extraction chain
     extraction_chain = prompt | llm.with_structured_output(schema=Abstract)
+    
+    result = extraction_chain.invoke({"text": abstract_row['content']})
+    abstract_dict = result.dict()
+    abstract_dict['page_number'] = int(abstract_row['page_number'])
+    json_result = json.dumps(abstract_dict, indent=2)
+    
+    return json_result
