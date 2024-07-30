@@ -39,11 +39,9 @@ with DAG(
     
     pdf_file = download_pdf_task()
 
-    #with TaskGroup(group_id='process_partitions') as process_group:
-    #
-    #    partition_tasks = [process_pdf_partition(i) for i in range(1, NUM_PARTITIONS + 1)]
+    with TaskGroup(group_id='process_partitions') as process_group:
+        partition_tasks = [process_pdf_partition.override(task_id=f'process_partition_{i}')(partition_number=i, pdf_file=pdf_file) for i in range(1, NUM_PARTITIONS + 1)]
 
+   # combined_pdf = combine_pdf_partitions()
 
-    #combined_pdf = combine_pdf_partitions()
-
-    pdf_file# >> process_group #>> combined_pdf
+    pdf_file >> process_group #>> combined_pdf
