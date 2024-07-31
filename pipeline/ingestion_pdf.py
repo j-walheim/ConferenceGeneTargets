@@ -67,7 +67,7 @@ def download_pdf_task(**kwargs):
 def process_pdf_partition(partition_number, pdf_file, **kwargs):
     ti = kwargs['ti']
 
-    pages_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, '_processed_pages')    
+    pages_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, 'processed_pages')    
     os.makedirs(pages_dir, exist_ok=True)
     output_file = os.path.join(pages_dir, f'partition_{partition_number}.pkl')
 

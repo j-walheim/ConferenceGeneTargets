@@ -14,7 +14,7 @@ load_dotenv()
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
-
+ENVIRONMENT = os.getenv("environment", "development")
 STORAGE_DIR = os.getenv("STORAGE_DIR")
 
 
@@ -92,7 +92,7 @@ def process_and_merge_abstracts(processed_partition_files):
             processed_abstracts = json.load(f)
         processed_partitions.extend(processed_abstracts)
     
-    output_file = os.path.join(STORAGE_DIR, 'merged_processed_abstracts.json')
+    output_file = os.path.join(STORAGE_DIR,ENVIRONMENT, 'merged_processed_abstracts.json')
     with open(output_file, 'w') as f:
         json.dump(processed_partitions, f, indent=2)
     
