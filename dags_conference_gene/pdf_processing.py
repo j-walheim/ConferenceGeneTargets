@@ -4,6 +4,7 @@ from airflow.decorators import task
 from airflow.models import Variable
 from datetime import timedelta
 from airflow.utils.task_group import TaskGroup
+
 import os
 import dotenv
 import sys
@@ -12,6 +13,7 @@ sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task
 from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS
 dotenv.load_dotenv()
+from pipeline.process_abstract import process_abstracts_partition, process_and_merge_abstracts
 
 # Configuration
 DEFAULT_ARGS = {
@@ -44,7 +46,11 @@ with DAG(
     with TaskGroup(group_id='process_partitions') as process_group:
         partition_tasks = [process_pdf_partition.override(task_id=f'process_partition_{i}')(partition_number=i, pdf_file=pdf_file) for i in range(0, NUM_PARTITIONS)]
 
+    with TaskGroup(group_id='process_abstracts') as abstract_group:
+        abstract_tasks = [process_abstracts_partition.override(task_id=f'process_abstracts_{i}')(partition_file=partition_tasks[i]) for i in range(NUM_PARTITIONS)]
 
-    combined_pdf = combine_pdf_partitions()
+    merged_abstracts = process_and_merge_abstracts(abstract_tasks)
 
-    pdf_file >> process_group >> combined_pdf
+#    combined_pdf = combine_pdf_partitions()
+
+    pdf_file >> process_group >> abstract_group >> merged_abstracts #>> combined_pdf

@@ -66,44 +66,46 @@ def download_pdf_task(**kwargs):
 @task
 def process_pdf_partition(partition_number, pdf_file, **kwargs):
     ti = kwargs['ti']
-    pages_dir = os.path.join(STORAGE_DIR, 'processed_pages')
+
+    pages_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, '_processed_pages')    
     os.makedirs(pages_dir, exist_ok=True)
     output_file = os.path.join(pages_dir, f'partition_{partition_number}.pkl')
 
-    if not os.path.exists(output_file):
-        log_progress(ti, f"Processing PDF partition {partition_number}")
-
-        parser = LlamaParse(
-            api_key=LLAMA_CLOUD_API_KEY,
-            result_type="markdown"
-        )
-
-        reader = PdfReader(pdf_file)
-        total_pages = len(reader.pages)
-        
-        if ENVIRONMENT == 'development':
-            total_pages = min(total_pages, DEV_PAGE_LIMIT)
-            log_progress(ti, f"Development mode: Processing only the first {DEV_PAGE_LIMIT} pages")
-        
-        pages_per_partition = max(1, total_pages // NUM_PARTITIONS)
-        start_page = partition_number * pages_per_partition
-        end_page = min((partition_number + 1) * pages_per_partition, total_pages)
-
-        all_documents = []
-        for i in range(start_page, end_page):
-            page_docs = process_page(reader.pages[i], i + 1, parser)
-            all_documents.extend(page_docs)
-            log_progress(ti, f"Processed page {i+1}/{end_page} of partition {partition_number}")
-
-        df = pd.DataFrame({
-            'page_number': [doc.metadata['page_number'] for doc in all_documents],
-            'content': [doc.text for doc in all_documents]
-        })
-        df.to_pickle(output_file)
-
-        log_progress(ti, f"Finished processing PDF partition {partition_number}, extracted {len(all_documents)} documents.")
-    else:
+    if os.path.exists(output_file):
         log_progress(ti, f"Skipping partition {partition_number} as it already exists")
+        return output_file
+
+    log_progress(ti, f"Processing PDF partition {partition_number}")
+
+    parser = LlamaParse(
+        api_key=LLAMA_CLOUD_API_KEY,
+        result_type="markdown"
+    )
+
+    reader = PdfReader(pdf_file)
+    total_pages = len(reader.pages)
+    
+    if ENVIRONMENT == 'development':
+        total_pages = min(total_pages, DEV_PAGE_LIMIT)
+        log_progress(ti, f"Development mode: Processing only the first {DEV_PAGE_LIMIT} pages")
+    
+    pages_per_partition = max(1, total_pages // NUM_PARTITIONS)
+    start_page = partition_number * pages_per_partition
+    end_page = min((partition_number + 1) * pages_per_partition, total_pages)
+
+    all_documents = []
+    for i in range(start_page, end_page):
+        page_docs = process_page(reader.pages[i], i + 1, parser)
+        all_documents.extend(page_docs)
+        log_progress(ti, f"Processed page {i+1}/{end_page} of partition {partition_number}")
+
+    df = pd.DataFrame({
+        'page_number': [doc.metadata['page_number'] for doc in all_documents],
+        'content': [doc.text for doc in all_documents]
+    })
+    df.to_pickle(output_file)
+
+    log_progress(ti, f"Finished processing PDF partition {partition_number}, extracted {len(all_documents)} documents.")
 
     return output_file
 
