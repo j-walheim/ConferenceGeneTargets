@@ -69,7 +69,7 @@ def process_pdf_partition(partition_number, pdf_file, **kwargs):
 
     pages_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, 'processed_pages')    
     os.makedirs(pages_dir, exist_ok=True)
-    output_file = os.path.join(pages_dir, f'partition_{partition_number}.pkl')
+    output_file = os.path.join(pages_dir, f'partition_{partition_number}.csv')
 
     if os.path.exists(output_file):
         log_progress(ti, f"Skipping partition {partition_number} as it already exists")
@@ -96,6 +96,9 @@ def process_pdf_partition(partition_number, pdf_file, **kwargs):
     all_documents = []
     for i in range(start_page, end_page):
         page_docs = process_page(reader.pages[i], i + 1, parser)
+        # check if page_docs is empty - if yes throw an error
+        if not page_docs:
+            raise AirflowException(f"No documents extracted from page {i+1}, most likely this means that the quota is exceeded")
         all_documents.extend(page_docs)
         log_progress(ti, f"Processed page {i+1}/{end_page} of partition {partition_number}")
 
@@ -103,7 +106,7 @@ def process_pdf_partition(partition_number, pdf_file, **kwargs):
         'page_number': [doc.metadata['page_number'] for doc in all_documents],
         'content': [doc.text for doc in all_documents]
     })
-    df.to_pickle(output_file)
+    df.to_csv(output_file, index=False)
 
     log_progress(ti, f"Finished processing PDF partition {partition_number}, extracted {len(all_documents)} documents.")
 
