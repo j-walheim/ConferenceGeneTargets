@@ -11,7 +11,7 @@ import sys
 sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 
 from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task, partition_into_batches
-from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS
+from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS, STORAGE_DIR, ENVIRONMENT
 dotenv.load_dotenv()
 from pipeline.process_abstract import process_abstracts_partition, process_and_merge_abstracts
 
@@ -31,10 +31,6 @@ DEFAULT_ARGS = {
 }
 
 
-ENVIRONMENT = os.getenv("environment", "development")
-STORAGE_DIR = os.getenv("storage_dir", "/teamspace/studios/this_studio/ConferenceGeneTargetsRAG/data/processed_airflow")
-
-
 
 
 
@@ -52,7 +48,7 @@ with DAG(
     batches = partition_into_batches(pdf_file, batch_size=100)
 
     with TaskGroup(group_id='process_partitions') as process_group:
-        partition_tasks = process_pdf_partition.expand(batch=batches)
+        partition_tasks = process_pdf_partition.expand(batch_pages=batches)
                            
         
     # with TaskGroup(group_id='process_abstracts') as abstract_group:

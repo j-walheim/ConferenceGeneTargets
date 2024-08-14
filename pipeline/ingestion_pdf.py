@@ -9,15 +9,13 @@ from airflow.models import Variable
 from airflow.exceptions import AirflowException
 from airflow.decorators import task
 from colorama import init, Fore, Back, Style
-from .config import NUM_PARTITIONS, DEV_PAGE_LIMIT
+from .config import NUM_PARTITIONS, DEV_PAGE_LIMIT, STORAGE_DIR, ENVIRONMENT
 import json
 from typing import List
 from dotenv import load_dotenv
 load_dotenv()
 
-# Configuration
-ENVIRONMENT = os.getenv("environment", "development")
-STORAGE_DIR = os.getenv("STORAGE_DIR")
+
 LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
 
 
@@ -70,12 +68,13 @@ def partition_into_batches(pdf_file, batch_size: int = 100, **kwargs) -> List[Li
     reader = PdfReader(pdf_file)
     total_pages = len(reader.pages)
     
-    log_progress(ti, f"Partitioning PDF pages into batches of size {batch_size}")
+    log_progress(ti, f"Partitioning {total_pages} PDF pages into batches of size {batch_size}")
+    
     
     if ENVIRONMENT == 'development':
-        return [list(range(i, min(i + batch_size, 2))) for i in range(0, 2, batch_size)]
-    else:
-        return [list(range(i, min(i + batch_size, total_pages))) for i in range(0, total_pages, batch_size)]
+        total_pages = DEV_PAGE_LIMIT 
+        log_progress(ti, f"Development mode: Processing only the first {DEV_PAGE_LIMIT} pages")
+    return [list(range(i, min(i + batch_size, total_pages))) for i in range(0, total_pages, batch_size)]
 
 
 
