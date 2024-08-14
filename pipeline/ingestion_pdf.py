@@ -10,7 +10,8 @@ from airflow.exceptions import AirflowException
 from airflow.decorators import task
 from colorama import init, Fore, Back, Style
 from .config import NUM_PARTITIONS, DEV_PAGE_LIMIT
-
+import json
+from typing import List
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -62,20 +63,30 @@ def download_pdf_task(**kwargs):
     
     return fname
 
-
 @task
-def process_pdf_partition(partition_number, pdf_file, **kwargs):
+def partition_into_batches(pdf_file, batch_size: int = 100, **kwargs) -> List[List[int]]:
     ti = kwargs['ti']
 
+    reader = PdfReader(pdf_file)
+    total_pages = len(reader.pages)
+    
+    log_progress(ti, f"Partitioning PDF pages into batches of size {batch_size}")
+    
+    if ENVIRONMENT == 'development':
+        return [list(range(i, min(i + batch_size, 2))) for i in range(0, 2, batch_size)]
+    else:
+        return [list(range(i, min(i + batch_size, total_pages))) for i in range(0, total_pages, batch_size)]
+
+
+
+@task
+def process_pdf_partition(batch_pages: List[int], **kwargs):
+    ti = kwargs['ti']
+    pdf_file = '/teamspace/studios/this_studio/ConferenceGeneTargets/data/pdfs/AACR2024_Regular_Abstracts_04-01-24.pdf'
     pages_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, 'processed_pages')    
     os.makedirs(pages_dir, exist_ok=True)
-    output_file = os.path.join(pages_dir, f'partition_{partition_number}.csv')
 
-    if os.path.exists(output_file):
-        log_progress(ti, f"Skipping partition {partition_number} as it already exists")
-        return output_file
-
-    log_progress(ti, f"Processing PDF partition {partition_number}")
+    log_progress(ti, f"Processing PDF partition {batch_pages[0]} to {batch_pages[-1]}")
 
     parser = LlamaParse(
         api_key=LLAMA_CLOUD_API_KEY,
@@ -89,28 +100,33 @@ def process_pdf_partition(partition_number, pdf_file, **kwargs):
         total_pages = min(total_pages, DEV_PAGE_LIMIT)
         log_progress(ti, f"Development mode: Processing only the first {DEV_PAGE_LIMIT} pages")
     
-    pages_per_partition = max(1, total_pages // NUM_PARTITIONS)
-    start_page = partition_number * pages_per_partition
-    end_page = min((partition_number + 1) * pages_per_partition, total_pages)
 
-    all_documents = []
-    for i in range(start_page, end_page):
+    processed_files = []
+    for i in batch_pages:#range(start_page, end_page):
+        output_file = os.path.join(pages_dir, f'page_{i+1}.json')
+        
+        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+            log_progress(ti, f"Skipping page {i+1} as it has already been processed")
+            processed_files.append(output_file)
+            continue
+        
         page_docs = process_page(reader.pages[i], i + 1, parser)
-        # check if page_docs is empty - if yes throw an error
         if not page_docs:
             raise AirflowException(f"No documents extracted from page {i+1}, most likely this means that the quota is exceeded")
-        all_documents.extend(page_docs)
-        log_progress(ti, f"Processed page {i+1}/{end_page} of partition {partition_number}")
+        
+        if not page_docs is None:
+            with open(output_file, 'w') as f:
+                json.dump([{'page_number': doc.metadata['page_number'], 'content': doc.text} for doc in page_docs], f)
+      #  with open(output_file, 'w') as f:
+      #      json.dump([{'page_number': doc.metadata['page_number'], 'content': doc.text} for doc in page_docs], f)
+        
+        processed_files.append(output_file)
+        log_progress(ti, f"Processed and saved page {i+1} of partition")
 
-    df = pd.DataFrame({
-        'page_number': [doc.metadata['page_number'] for doc in all_documents],
-        'content': [doc.text for doc in all_documents]
-    })
-    df.to_csv(output_file, index=False)
+    log_progress(ti, f"Finished processing PDF partition, saved {len(processed_files)} page files.")
 
-    log_progress(ti, f"Finished processing PDF partition {partition_number}, extracted {len(all_documents)} documents.")
+    return pages_dir
 
-    return output_file
 
 @task
 def combine_pdf_partitions(**kwargs):

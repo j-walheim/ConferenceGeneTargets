@@ -10,10 +10,14 @@ import dotenv
 import sys
 sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 
-from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task
+from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task, partition_into_batches
 from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS
 dotenv.load_dotenv()
 from pipeline.process_abstract import process_abstracts_partition, process_and_merge_abstracts
+
+import json
+from PyPDF2 import PdfReader
+
 
 # Configuration
 DEFAULT_ARGS = {
@@ -31,6 +35,9 @@ ENVIRONMENT = os.getenv("environment", "development")
 STORAGE_DIR = os.getenv("storage_dir", "/teamspace/studios/this_studio/ConferenceGeneTargetsRAG/data/processed_airflow")
 
 
+
+
+
 with DAG(
     dag_id=f'pdf_processing_pipeline_{ENVIRONMENT}',
     default_args=DEFAULT_ARGS,
@@ -41,16 +48,18 @@ with DAG(
 
     
     pdf_file = download_pdf_task()
-
+    
+    batches = partition_into_batches(pdf_file, batch_size=100)
 
     with TaskGroup(group_id='process_partitions') as process_group:
-        partition_tasks = [process_pdf_partition.override(task_id=f'process_partition_{i}')(partition_number=i, pdf_file=pdf_file) for i in range(0, NUM_PARTITIONS)]
+        partition_tasks = process_pdf_partition.expand(batch=batches)
+                           
+        
+    # with TaskGroup(group_id='process_abstracts') as abstract_group:
+    #     abstract_tasks = [process_abstracts_partition.override(task_id=f'process_abstracts_{i}')(partition_file=partition_tasks[i]) for i in range(NUM_PARTITIONS)]
 
-    with TaskGroup(group_id='process_abstracts') as abstract_group:
-        abstract_tasks = [process_abstracts_partition.override(task_id=f'process_abstracts_{i}')(partition_file=partition_tasks[i]) for i in range(NUM_PARTITIONS)]
-
-    merged_abstracts = process_and_merge_abstracts(abstract_tasks)
+    # merged_abstracts = process_and_merge_abstracts(abstract_tasks)
 
 #    combined_pdf = combine_pdf_partitions()
 
-    pdf_file >> process_group >> abstract_group >> merged_abstracts #>> combined_pdf
+    pdf_file >> process_group# >> abstract_group >> merged_abstracts #>> combined_pdf
