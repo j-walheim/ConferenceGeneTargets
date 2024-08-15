@@ -22,13 +22,13 @@ def get_mesh_synonyms(term):
  # %%
 # Usage example
 
-def get_disease_synonyms():
+def prepare_disease_synonyms():
     df_disease = pd.read_csv('data/RAG_LLM/features_raw/cancer_types.csv')
     
     disease_synonyms = {}
     
     for _, row in df_disease.iterrows():
-        disease_term = row['cancer_type']  # Assuming 'cancer_type' is the column name
+        disease_term = row['Cancer_Type']  # Assuming 'cancer_type' is the column name
         synonyms = get_mesh_synonyms(disease_term)
         disease_synonyms[disease_term] = synonyms
     

@@ -59,8 +59,8 @@ def get_synonyms(df_hugo):
     url = "https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz"
 
     # Local filenames
-    gz_file = "gene_info.gz"
-    extracted_file = "gene_info"
+    gz_file = "data/RAG_LLM/features_raw/gene_info.gz"
+    extracted_file = "data/RAG_LLM/features_raw/gene_info"
 
     if not os.path.exists(extracted_file):
         # Download the file
@@ -93,9 +93,6 @@ def get_synonyms(df_hugo):
     # Create a TextFileReader object
     df_iterator = pd.read_csv(file_path, sep='\t', usecols=columns_to_use, chunksize=1000)
 
-    # Assume df_genes is already defined and contains the symbols we want to keep
-    # df_genes = pd.DataFrame({'Symbol': ['gene1', 'gene2', 'gene3']})
-
     # Initialize an empty list to store the filtered chunks
     filtered_chunks = []
 
@@ -104,7 +101,7 @@ def get_synonyms(df_hugo):
 
     for chunk in tqdm(df_iterator, desc="Processing chunks"):
         # Filter the chunk to keep only rows where Symbol is in df_genes
-        filtered_chunk = chunk[chunk['Symbol'].isin(df_genes['HUGO'])]
+        filtered_chunk = chunk[chunk['Symbol'].isin(df_hugo['HUGO'])]
         
         # Append the filtered chunk to our list
         filtered_chunks.append(filtered_chunk)
@@ -123,7 +120,7 @@ def get_synonyms(df_hugo):
 
     return result
 
-def prepare_gene_terms():
+def prepare_gene_synonyms():
     fname_out = 'data/RAG_LLM/features/genes_synonyms.pq'
     
     df_genes = get_hugo_symbols_df()
