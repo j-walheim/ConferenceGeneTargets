@@ -166,3 +166,8 @@ data/
 airflow_variables.sh
 data_old/
 abstracts_all_tmp.json
+*.pdf
+*.json
+*.txt
+*.gz
+experimental/gene_info
