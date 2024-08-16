@@ -10,7 +10,6 @@ from utils.get_gene_synonyms import prepare_gene_synonyms
 disease_synonyms = prepare_disease_synonyms()
 gene_synonyms = prepare_gene_synonyms()
 
-gene_synonyms = gene_synonyms.head(100)
 
 gene_lookup = [
     f"HUGO: {row['Symbol']}{', Synonyms: ' + row['Synonyms'] if row['Synonyms'] != '-' else ''}"
