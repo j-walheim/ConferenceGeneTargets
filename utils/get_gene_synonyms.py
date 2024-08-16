@@ -86,7 +86,7 @@ def get_synonyms(df_hugo):
 
     # File path
     file_path = 'data/RAG_LLM/features_raw/gene_info'
-
+    
     # Columns we want to retrieve
     columns_to_use = ['GeneID', 'Symbol', 'Synonyms', 'description']
 
@@ -113,7 +113,7 @@ def get_synonyms(df_hugo):
     print(result)
 
     # If you want to save this result to a new file:
-    # result.to_csv('filtered_output.csv', index=False)
+    result.to_csv('filtered_output.csv', index=False)
 
     # Print the total number of rows in the result
     print(f"Total rows after filtering: {len(result)}")
@@ -123,9 +123,13 @@ def get_synonyms(df_hugo):
 def prepare_gene_synonyms():
     fname_out = 'data/RAG_LLM/features/genes_synonyms.pq'
     
-    df_genes = get_hugo_symbols_df()
-    df_synonyms = get_synonyms(df_genes)
+    if not os.path.exists(fname_out):
+        df_genes = get_hugo_symbols_df()
+        df_synonyms = get_synonyms(df_genes)
     
-    df_synonyms.to_parquet(fname_out)
-
+        df_synonyms.to_parquet(fname_out)
+    else:
+        df_synonyms = pd.read_parquet(fname_out)
+        
+    return df_synonyms
 

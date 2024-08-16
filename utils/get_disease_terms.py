@@ -35,3 +35,5 @@ def prepare_disease_synonyms():
     import json
     with open('data/RAG_LLM/features/disease_synonyms.json', 'w') as f:
         json.dump(disease_synonyms, f, indent=2)
+
+    return disease_synonyms
