@@ -1,7 +1,6 @@
 # %%
 import requests
 import re
-from fuzzywuzzy import process
 import pandas as pd
  
 def get_mesh_synonyms(term):
