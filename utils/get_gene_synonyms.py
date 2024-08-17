@@ -131,5 +131,21 @@ def prepare_gene_synonyms():
     else:
         df_synonyms = pd.read_parquet(fname_out)
         
-    return df_synonyms
+    # get unique number of genes
+    
+    # Group by Symbol and aggregate the other columns
+    genes_aggregated = df_synonyms.groupby('Symbol').agg({
+        'Synonyms': lambda x: ';'.join(set(';'.join(x).split(';'))),
+        'description': lambda x: '; '.join(set(x))
+    }).reset_index()
+
+    # Clean up any potential extra spaces in the description
+    genes_aggregated['description'] = genes_aggregated['description'].str.strip()
+
+    # If you want to sort the synonyms alphabetically within each group
+    genes_aggregated['Synonyms'] = genes_aggregated['Synonyms'].apply(lambda x: ';'.join(sorted(set(x.split(';')))))
+
+    # Save the result
+    genes_aggregated.to_csv('data/RAG_LLM/features/genes_synonyms_grouped.csv', index=False)
+    return genes_aggregated
 
