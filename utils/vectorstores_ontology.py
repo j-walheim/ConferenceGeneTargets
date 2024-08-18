@@ -54,7 +54,12 @@ class VectorStore:
         query_vector = self.model.encode([query])
         D, I = index.search(query_vector, k)
         lookup = self.gene_lookup if index is self.gene_index else self.disease_lookup
-        return [lookup[i] for i in I[0]]
+        res = [lookup[i] for i in I[0]]
+        
+        return [f"Primary: '{primary}' Synonym: '{synonym}'" for synonym, primary in res]
+
+        
+        #return [lookup[i] for i in I[0]]
 
 
     def rag(self, query):
