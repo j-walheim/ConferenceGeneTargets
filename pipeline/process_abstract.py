@@ -9,14 +9,13 @@ import json
 from airflow.decorators import task
 import pandas as pd
 import os
+from .config import NUM_PARTITIONS, DEV_PAGE_LIMIT, STORAGE_DIR, ENVIRONMENT
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
-ENVIRONMENT = os.getenv("environment", "development")
-STORAGE_DIR = os.getenv("STORAGE_DIR")
 
 def extract_abstract_info(abstract_text, model = 'mistral'):
     
