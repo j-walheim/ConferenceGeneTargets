@@ -25,7 +25,7 @@ abstract_text = abstract[0].get('content')
 
 
 # %%
-result = extract_abstract_info(abstract_text)
+result = extract_abstract_info(abstract_text,model = 'groq')
 
 abstract_dict = result.dict()
 abstract_dict['text'] = abstract_text
@@ -37,5 +37,6 @@ json_result = json.dumps(abstract_dict, indent=2)
 
 # %%
 # save json_result to data/production/processed_pages/page_219.json
-with open('/teamspace/studios/this_studio/ConferenceGeneTargets/tmp_page_6324.json', 'w') as f:
+with open('/teamspace/studios/this_studio/ConferenceGeneTargets/tmp/page_6324.json', 'w') as f:
     f.write(json_result)
+# %%

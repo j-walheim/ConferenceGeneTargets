@@ -7,7 +7,7 @@ from langchain_mistralai import ChatMistralAI
 from utils.get_disease_terms import prepare_disease_synonyms
 from utils.get_gene_synonyms import prepare_gene_synonyms
 from tqdm import tqdm
-from utils.vectorsstores_ontology import VectorStore
+from utils.vectorstores_ontology import VectorStore
 
 from dotenv import load_dotenv
 load_dotenv()

@@ -8,20 +8,18 @@ import pandas as pd
 from airflow.models import Variable
 from airflow.exceptions import AirflowException
 from airflow.decorators import task
-from colorama import init, Fore, Back, Style
 from .config import NUM_PARTITIONS, DEV_PAGE_LIMIT, STORAGE_DIR, ENVIRONMENT
 import json
 from typing import List
 from dotenv import load_dotenv
 load_dotenv()
 
+from pipeline.helpers import log_progress
 
 LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
 
 
-def log_progress(ti, message):
-    ti.xcom_push(key='progress_log', value=message)
-    print(Back.GREEN + message + Style.RESET_ALL)
+
 
 def process_page(page_content, page_number, parser):
     temp_file = f"temp_page_{page_number}.pdf"

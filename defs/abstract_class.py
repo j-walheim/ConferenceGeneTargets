@@ -1,41 +1,5 @@
 from langchain.pydantic_v1 import BaseModel, Field
 from typing import List, Optional
-# TCGA project names to full names mapping
-tcga_to_fullname = {
-    "TCGA-BRCA": "Invasive Breast Carcinoma",
-    "TCGA-GBM": "Glioblastoma",
-    "TCGA-OV": "High-Grade Serous Ovarian Cancer",
-    "TCGA-LUAD": "Lung Adenocarcinoma",
-    "TCGA-UCEC": "Endometrial Carcinoma",
-    "TCGA-KIRC": "Renal Clear Cell Carcinoma",
-    "TCGA-HNSC": "Head and Neck Squamous Cell Carcinoma",
-    "TCGA-LGG": "Diffuse Glioma",
-    "TCGA-THCA": "Thyroid Cancer",
-    "TCGA-LUSC": "Lung Squamous Cell Carcinoma",
-    "TCGA-PRAD": "Prostate Adenocarcinoma",
-    "TCGA-SKCM": "Melanoma",
-    "TCGA-COAD": "Colorectal Adenocarcinoma",
-    "TCGA-STAD": "Stomach Adenocarcinoma",
-    "TCGA-BLCA": "Bladder Urothelial Carcinoma",
-    "TCGA-LIHC": "Hepatocellular Carcinoma",
-    "TCGA-CESC": "Cervical Squamous Cell Carcinoma",
-    "TCGA-KIRP": "Papillary Renal Cell Carcinoma",
-    "TCGA-SARC": "Soft Tissue Sarcoma",
-    "TCGA-LAML": "Acute Myeloid Leukemia",
-    "TCGA-PAAD": "Pancreatic Adenocarcinoma",
-    "TCGA-ESCA": "Esophageal Cancer",
-    "TCGA-PCPG": "Pheochromocytoma and Paraganglioma",
-    "TCGA-READ": "Colorectal Adenocarcinoma",
-    "TCGA-TGCT": "Testicular Germ Cell Tumor",
-    "TCGA-THYM": "Thymoma",
-    "TCGA-KICH": "Chromophobe Renal Cell Carcinoma",
-    "TCGA-ACC": "Adrenocortical Carcinoma",
-    "TCGA-MESO": "Pleural Mesothelioma",
-    "TCGA-UVM": "Uveal Melanoma",
-    "TCGA-DLBC": "Diffuse Large B-Cell Lymphoma",
-    "TCGA-UCS": "Uterine Carcinosarcoma",
-    "TCGA-CHOL": "Cholangiocarcinoma"
-}
 
 class Author(BaseModel):
     """Information about an author."""
@@ -57,6 +21,8 @@ class Abstract(BaseModel):
     disease: Optional[List[str]] = Field(description="A list of specific cancer indications or types mentioned in the abstract")
     gene: Optional[List[str]] = Field(description="A list of genes mentioned in the abstract.")
     interaction: Optional[List[GeneDisease]] = Field(description="A list of gene-disease interactions mentioned in the abstract")
-
-
+    organism: Optional[List[str]] = Field(description="The types of organism used in the study. Must be 'cell line', 'PDX', 'animal', 'human', or 'n/a' if not specified.")
+    trial_stage: Optional[List[str]] = Field(description="The stage of the trial or study. Must be 'preclinical', 'Phase I', 'Phase II', 'Phase III', 'post-approval'")
+    compound_name: Optional[str] = Field(description="The name of the compound or drug mentioned in the abstract. E.g. 'GS-P-328', 'IOMX-0675', or 'Pembrolizumab'")
+    abstract_category: str = Field(description="Assign the abstract to one of the following categories: 'Diagnostics', 'Gene-Disease Associations', or 'Other'. Choose the most appropriate category based on the main focus of the abstract.")
 

@@ -1,13 +1,12 @@
+import os
+import dotenv
+import sys
 from airflow import DAG
-
 from airflow.decorators import task
 from airflow.models import Variable
 from datetime import timedelta
 from airflow.utils.task_group import TaskGroup
 
-import os
-import dotenv
-import sys
 sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 
 from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task, partition_into_batches
@@ -47,15 +46,16 @@ with DAG(
     
     batches = partition_into_batches(pdf_file, batch_size=100)
 
-    with TaskGroup(group_id='process_partitions') as process_group:
-        partition_tasks = process_pdf_partition.expand(batch_pages=batches)
+   # with TaskGroup(group_id='process_partitions') as process_group:
+   #     partition_tasks = process_pdf_partition.expand(batch_pages=batches)
                            
         
-    # with TaskGroup(group_id='process_abstracts') as abstract_group:
-    #     abstract_tasks = [process_abstracts_partition.override(task_id=f'process_abstracts_{i}')(partition_file=partition_tasks[i]) for i in range(NUM_PARTITIONS)]
+    with TaskGroup(group_id='process_abstracts') as abstract_group:
+         abstract_tasks = [process_abstracts_partition.override(task_id=f'process_abstracts_{i}')(partition_file=partition_tasks[i]) for i in range(NUM_PARTITIONS)]
 
     # merged_abstracts = process_and_merge_abstracts(abstract_tasks)
 
 #    combined_pdf = combine_pdf_partitions()
 
-    pdf_file >> process_group# >> abstract_group >> merged_abstracts #>> combined_pdf
+#    pdf_file >> process_group #>> abstract_group >> merged_abstracts #>> combined_pdf
+    pdf_file >> abstract_group 
