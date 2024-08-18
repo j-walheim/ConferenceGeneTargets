@@ -22,8 +22,8 @@ gene_lookup = [
 ]
 
 disease_lookup = [
-    f"Disease: {disease}, Synonyms: {', '.join(synonyms)}"
-    for disease, synonyms in disease_synonyms.items()
+    f"Disease: {row['disease']}, Synonyms: {row['synonyms']}"
+    for _, row in disease_synonyms.iterrows()
 ]
 
 # Set up embeddings
