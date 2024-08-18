@@ -130,8 +130,6 @@ def prepare_gene_synonyms():
         df_synonyms.to_parquet(fname_out)
     else:
         df_synonyms = pd.read_parquet(fname_out)
-        
-    # get unique number of genes
     
     # Group by Symbol and aggregate the other columns
     genes_aggregated = df_synonyms.groupby('Symbol').agg({
@@ -142,10 +140,15 @@ def prepare_gene_synonyms():
     # Clean up any potential extra spaces in the description
     genes_aggregated['description'] = genes_aggregated['description'].str.strip()
 
-    # sort the synonyms alphabetically within each group
-    genes_aggregated['Synonyms'] = genes_aggregated['Synonyms'].apply(lambda x: ';'.join(sorted(set(x.split(';')))) if x else '')
+    # Add identity mapping for all Hugo symbols
+    genes_aggregated['Synonyms'] = genes_aggregated.apply(lambda row: f"{row['Symbol']};{row['Synonyms']}" if row['Synonyms'] else row['Symbol'], axis=1)
+
+    # Sort the synonyms alphabetically within each group
+    genes_aggregated['Synonyms'] = genes_aggregated['Synonyms'].apply(lambda x: ';'.join(sorted(set(x.split(';')))))
+
+    # Drop duplicates
+    genes_aggregated = genes_aggregated.drop_duplicates()
 
     # Save the result
     genes_aggregated.to_csv('data/RAG_LLM/features/genes_synonyms_grouped.csv', index=False)
     return genes_aggregated
-

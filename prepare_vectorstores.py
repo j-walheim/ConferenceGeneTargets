@@ -30,35 +30,3 @@ with open('tmp/results.txt', 'w') as f:
     f.write(f"Gene context: {gene_context}\n")
     f.write(f"Disease context: {disease_context}\n")
     
-
-# # RAG function
-# def rag(query):
-#     gene_context = retrieve(gene_index, query)
-#     disease_context = retrieve(disease_index, query, k = 2)
-    
-#     prompt = f"""Your task is to identify genes and diseases mentioned in the given text and map them to their standardized terms.
-#     Use the following retrieved context to help identify genes, diseases, and their standard names:
-
-#     Gene context:
-#     {gene_context}
-
-#     Disease context:
-#     {disease_context}
-
-#     If you identify a gene or disease mentioned in the text, provide its standardized term.
-#     If you're unsure about a gene or disease mention, don't include it in the results.
-
-#     Extract genes and diseases from the following text:
-
-#     {query}
-#     """
-#     result = llm.invoke(prompt)
-#     return result.content#(prompt)
-
-
-
-
-
-# # Example usage
-# result = rag("Recent studies have shown that mutations in the BRCA1 gene are associated with an increased risk of breast cancer.")
-# print(result)

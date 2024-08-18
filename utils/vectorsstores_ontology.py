@@ -16,18 +16,22 @@ class VectorStore:
 
     def prepare_lookups(self, gene_synonyms, disease_synonyms):
         self.gene_lookup = [
-            f"HUGO: {row['Symbol']}{', Synonyms: ' + row['Synonyms'] if row['Synonyms'] != '-' else ''}"
+            (synonym, row['Symbol'])
             for _, row in gene_synonyms.iterrows()
+            for synonym in (row['Synonyms'].split(';') if row['Synonyms'] != '-' else [row['Symbol']])
         ]
         self.disease_lookup = [
-            f"Disease: {row['disease']}, Synonyms: {row['synonyms']}"
+            (synonym, row['disease'])
             for _, row in disease_synonyms.iterrows()
+            for synonym in row['synonym'].split(';')
         ]
 
-    def add_to_index(self, index, texts):
-        for text in tqdm(texts, desc="Adding to index"):
-            embedding = self.model.encode([text])
+
+    def add_to_index(self, index, lookup):
+        for synonym, _ in tqdm(lookup, desc="Adding to index"):
+            embedding = self.model.encode([synonym])
             index.add(np.array(embedding))
+
 
     def create_or_load_index(self, name, lookup):
         index = faiss.IndexFlatL2(self.dimension)
@@ -49,9 +53,11 @@ class VectorStore:
     def retrieve(self, index, query, k=5):
         query_vector = self.model.encode([query])
         D, I = index.search(query_vector, k)
-        return [self.gene_lookup[i] if index is self.gene_index else self.disease_lookup[i] for i in I[0]]
+        lookup = self.gene_lookup if index is self.gene_index else self.disease_lookup
+        return [lookup[i] for i in I[0]]
+
 
     def rag(self, query):
-        gene_context = self.retrieve(self.gene_index, query)
         disease_context = self.retrieve(self.disease_index, query, k=2)
+        gene_context = self.retrieve(self.gene_index, query)
         return gene_context, disease_context
