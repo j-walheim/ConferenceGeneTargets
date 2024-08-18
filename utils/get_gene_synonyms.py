@@ -135,15 +135,15 @@ def prepare_gene_synonyms():
     
     # Group by Symbol and aggregate the other columns
     genes_aggregated = df_synonyms.groupby('Symbol').agg({
-        'Synonyms': lambda x: ';'.join(set(';'.join(x).split(';'))),
+        'Synonyms': lambda x: ';'.join(set(y for y in ';'.join(x).split(';') if y != '-') or ''),
         'description': lambda x: '; '.join(set(x))
     }).reset_index()
 
     # Clean up any potential extra spaces in the description
     genes_aggregated['description'] = genes_aggregated['description'].str.strip()
 
-    # If you want to sort the synonyms alphabetically within each group
-    genes_aggregated['Synonyms'] = genes_aggregated['Synonyms'].apply(lambda x: ';'.join(sorted(set(x.split(';')))))
+    # sort the synonyms alphabetically within each group
+    genes_aggregated['Synonyms'] = genes_aggregated['Synonyms'].apply(lambda x: ';'.join(sorted(set(x.split(';')))) if x else '')
 
     # Save the result
     genes_aggregated.to_csv('data/RAG_LLM/features/genes_synonyms_grouped.csv', index=False)
