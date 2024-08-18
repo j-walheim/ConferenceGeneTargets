@@ -14,10 +14,10 @@ def get_mesh_synonyms(term):
         entries = re.findall(r'<li>(.*?)</li>', extracted_text)
         # Filter out entries with HTML tags
         entries = [entry for entry in entries if '<' not in entry and '>' not in entry]
+        entries.append(term)  # Add the primary term to entries
         return entries
     else:
-        return []
-
+        return [term]  # Return the primary term if no synonyms found
  # %%
 # Usage example
 
@@ -27,13 +27,12 @@ def prepare_disease_synonyms():
     disease_synonyms = []
     
     for _, row in df_disease.iterrows():
-        disease_term = row['Cancer_Type']  # Assuming 'Cancer_Type' is the column name
+        disease_term = row['Cancer_Type'] 
         synonyms = get_mesh_synonyms(disease_term)
-        synonyms_string = ';'.join(synonyms)
-        disease_synonyms.append({'disease': disease_term, 'synonyms': synonyms_string})    
+        for synonym in synonyms:
+            disease_synonyms.append({'disease': disease_term, 'synonym': synonym})
     df_synonyms = pd.DataFrame(disease_synonyms)
     
-    # Save the DataFrame to a CSV file
     df_synonyms.to_csv('data/RAG_LLM/features/disease_synonyms.csv', index=False)
 
     return df_synonyms
