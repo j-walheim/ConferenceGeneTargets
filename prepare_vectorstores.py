@@ -1,3 +1,4 @@
+# %%
 import os
 import numpy as np
 import faiss
@@ -5,12 +6,16 @@ from sentence_transformers import SentenceTransformer
 from langchain_mistralai import ChatMistralAI
 from utils.get_disease_terms import prepare_disease_synonyms
 from utils.get_gene_synonyms import prepare_gene_synonyms
+from tqdm import tqdm
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Prepare disease and gene synonyms
 disease_synonyms = prepare_disease_synonyms()
 gene_synonyms = prepare_gene_synonyms()
 
-
+# %%
 gene_lookup = [
     f"HUGO: {row['Symbol']}{', Synonyms: ' + row['Synonyms'] if row['Synonyms'] != '-' else ''}"
     for _, row in gene_synonyms.iterrows()
@@ -31,11 +36,17 @@ disease_index = faiss.IndexFlatL2(dimension)
 
 # Function to add vectors to index
 def add_to_index(index, texts):
-    embeddings = model.encode(texts)
-    index.add(np.array(embeddings))
+    for text in tqdm(texts, desc="Adding genes to index"):
+        embedding = model.encode([text])
+        index.add(np.array(embedding))
+
+# Define vectorstore directory
+vectorstore_dir = "data/RAG_LLM/vectorstore"
+if not os.path.exists(vectorstore_dir):
+    os.makedirs(vectorstore_dir)
 
 # Gene vectorstore
-gene_vectorstore_path = "data/RAG_LLM/vectorstore/vectorstore_genes.index"
+gene_vectorstore_path = os.path.join(vectorstore_dir, "vectorstore_genes.index")
 if os.path.exists(gene_vectorstore_path):
     print(f"Loading existing gene vectorstore from {gene_vectorstore_path}")
     gene_index = faiss.read_index(gene_vectorstore_path)
@@ -43,10 +54,9 @@ else:
     print(f"Creating new gene vectorstore at {gene_vectorstore_path}")
     add_to_index(gene_index, gene_lookup)
     faiss.write_index(gene_index, gene_vectorstore_path)
-    print("Gene vectorstore persisted successfully")
 
 # Disease vectorstore
-disease_vectorstore_path = "data/RAG_LLM/vectorstore/vectorstore_diseases.index"
+disease_vectorstore_path = os.path.join(vectorstore_dir, "vectorstore_diseases.index")
 if os.path.exists(disease_vectorstore_path):
     print(f"Loading existing disease vectorstore from {disease_vectorstore_path}")
     disease_index = faiss.read_index(disease_vectorstore_path)
