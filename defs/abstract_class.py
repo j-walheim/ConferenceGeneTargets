@@ -23,6 +23,6 @@ class Abstract(BaseModel):
     interaction: Optional[List[GeneDisease]] = Field(description="A list of gene-disease interactions mentioned in the abstract")
     organism: Optional[List[str]] = Field(description="The types of organism used in the study. Must be 'cell line', 'PDX', 'animal', 'human', or 'n/a' if not specified.")
     trial_stage: Optional[List[str]] = Field(description="The stage of the trial or study. Must be 'preclinical', 'Phase I', 'Phase II', 'Phase III', 'post-approval'")
-    compound_name: Optional[str] = Field(description="The name of the compound or drug mentioned in the abstract. E.g. 'GS-P-328', 'IOMX-0675', or 'Pembrolizumab'")
+    compound_name: Optional[str] = Field(description="The name of the compound or drug mentioned in the abstract. Examples: 'GS-P-328', 'IOMX-0675', or 'Pembrolizumab'")
     abstract_category: str = Field(description="Assign the abstract to one of the following categories: 'Diagnostics', 'Gene-Disease Associations', or 'Other'. Choose the most appropriate category based on the main focus of the abstract.")
 
