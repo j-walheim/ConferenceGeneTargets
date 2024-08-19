@@ -9,7 +9,7 @@ from airflow.utils.task_group import TaskGroup
 import sys
 sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 
-from RAG.vectorstore_ontology import VectorStore
+from RAG_abstract_retrieval.vectorstore_ontology import VectorStore
 from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task, partition_into_batches
 from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS, STORAGE_DIR, ENVIRONMENT
 dotenv.load_dotenv()
