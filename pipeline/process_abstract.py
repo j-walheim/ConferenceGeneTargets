@@ -1,4 +1,6 @@
 # %% 
+import os
+import sys
 from typing import List
 from langchain_groq import ChatGroq
 from langchain_mistralai import ChatMistralAI
@@ -8,15 +10,17 @@ from defs.abstract_class import Abstract
 import json
 from airflow.decorators import task
 import pandas as pd
-import os
+import glob
 from .config import NUM_PARTITIONS, DEV_PAGE_LIMIT, STORAGE_DIR, ENVIRONMENT
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from utils.vectorstores_ontology import VectorStore
 
-from utils.get_disease_terms import prepare_disease_synonyms
-from utils.get_gene_synonyms import prepare_gene_synonyms
-from helpers import log_progress
+sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
+
+from RAG.vectorstore_ontology import VectorStore
+from RAG.get_disease_terms import prepare_disease_synonyms
+from RAG.get_gene_synonyms import prepare_gene_synonyms
+from pipeline.helpers import log_progress
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -92,7 +96,7 @@ Accuracy is paramount. It is better to omit information than to provide potentia
 
 
 @task
-def process_abstracts_partition(batch_pages: List[int], model = 'mistral', **kwargs):
+def process_abstracts_partition(batch_pages: List[int], model = 'groq', **kwargs):
     ti = kwargs['ti']
     pages_processed_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, 'processed_pages')    
     pages_parsed_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, f'parsed_pages_{model}')    
@@ -104,10 +108,10 @@ def process_abstracts_partition(batch_pages: List[int], model = 'mistral', **kwa
         output_file = os.path.join(pages_parsed_dir, f'page_{i+1}.json')
         
         if os.path.exists(output_file):
-            log_progress(f"Skipping page {i+1} as it has already been processed.")
+            log_progress(ti,f"Skipping page {i+1} as it has already been processed.")
             continue
         
-        log_progress(f"Processing page {i+1} with model {model}...")
+        log_progress(ti,f"Processing page {i+1} with model {model}...")
         with open(input_file) as f:
             abstract = json.load(f)
         abstract_text = abstract[0].get('content')
@@ -124,7 +128,20 @@ def process_abstracts_partition(batch_pages: List[int], model = 'mistral', **kwa
             f.write(json_result)
         
 
-
+#@task
+def create_jsonl_from_parsed_pages(**kwargs):
+#    ti = kwargs['ti']
+    model = 'groq'
+    parsed_pages_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, f'parsed_pages_{model}') 
+    output_jsonl = os.path.join(STORAGE_DIR, ENVIRONMENT, f'parsed_pages_{model}.jsonl')
+    with open(output_jsonl, 'w') as jsonl_file:
+        for filename in sorted(glob.glob(os.path.join(parsed_pages_dir, 'page_*.json'))):
+            with open(filename, 'r') as json_file:
+                abstract_dict = json.load(json_file)
+                json.dump(abstract_dict, jsonl_file)
+                jsonl_file.write('\n')
+    
+ #   log_progress(ti, f"Created JSONL file: {output_jsonl}")
 
 @task
 def process_and_merge_abstracts(processed_partition_files):

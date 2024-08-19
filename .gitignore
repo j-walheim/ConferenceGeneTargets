@@ -171,3 +171,4 @@ abstracts_all_tmp.json
 *.txt
 *.gz
 experimental/gene_info
+*.index
