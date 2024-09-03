@@ -56,10 +56,9 @@ class VectorStore:
         lookup = self.gene_lookup if index is self.gene_index else self.disease_lookup
         res = [lookup[i] for i in I[0]]
         
-        return [f"Primary: '{primary}' Synonym: '{synonym}'" for synonym, primary in res]
+        return [f"Primary: '{primary}'; Synonym: '{synonym}'" for synonym, primary in res]
 
         
-        #return [lookup[i] for i in I[0]]
 
 
     def rag(self, query):
