@@ -9,11 +9,11 @@ from airflow.utils.task_group import TaskGroup
 import sys
 sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 
-from RAG_abstract_retrieval.vectorstore_ontology import VectorStore
+#from RAG_term_normalisation.vectorstore_ontology import VectorStore
 from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task, partition_into_batches
 from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS, STORAGE_DIR, ENVIRONMENT
 dotenv.load_dotenv()
-from pipeline.process_abstract import process_abstracts_partition, process_and_merge_abstracts
+from pipeline.process_abstract import create_jsonl_from_parsed_pages, process_abstracts_partition, process_and_merge_abstracts
 
 import json
 from PyPDF2 import PdfReader
@@ -47,18 +47,13 @@ with DAG(
     
     batches = partition_into_batches(pdf_file, batch_size=100)
 
-    with TaskGroup(group_id='process_partitions') as process_group:
-        partition_tasks = process_pdf_partition.expand(batch_pages=batches)
+#    with TaskGroup(group_id='process_partitions') as process_group:
+#        partition_tasks = process_pdf_partition.expand(batch_pages=batches)
                             
     with TaskGroup(group_id='parse_partitions') as abstract_group:
         partition_tasks = process_abstracts_partition.expand(batch_pages=batches)
         
-    #with TaskGroup(group_id='process_abstracts') as abstract_group:
-    #     abstract_tasks = [process_abstracts_partition.override(task_id=f'process_abstracts_{i}')(partition_file=partition_tasks[i]) for i in range(NUM_PARTITIONS)]
+    merge_abstracts = create_jsonl_from_parsed_pages()
 
-    # merged_abstracts = process_and_merge_abstracts(abstract_tasks)
-
-#    combined_pdf = combine_pdf_partitions()
-
-    pdf_file >> process_group >> abstract_group# >> merged_abstracts #>> combined_pdf
-#    pdf_file >> abstract_group 
+   # pdf_file >> process_group >> merge_abstracts >> abstract_group# >> merged_abstracts #>> combined_pdf
+    pdf_file >> batches >> abstract_group >> merge_abstracts 

@@ -4,10 +4,10 @@ import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 from langchain_mistralai import ChatMistralAI
-from utils.get_disease_terms import prepare_disease_synonyms
-from utils.get_gene_synonyms import prepare_gene_synonyms
+from RAG_term_normalisation.get_disease_terms import prepare_disease_synonyms
+from RAG_term_normalisation.get_gene_synonyms import prepare_gene_synonyms
 from tqdm import tqdm
-from utils.vectorstores_ontology import VectorStore
+from RAG_term_normalisation.vectorstore_ontology import VectorStore
 
 from dotenv import load_dotenv
 load_dotenv()

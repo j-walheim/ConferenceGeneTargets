@@ -25,7 +25,7 @@ abstract_text = abstract[0].get('content')
 
 
 # %%
-result = extract_abstract_info(abstract_text,model = 'groq')
+result = extract_abstract_info(abstract_text,model = 'mistral')
 
 abstract_dict = result.dict()
 abstract_dict['text'] = abstract_text
