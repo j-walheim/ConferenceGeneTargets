@@ -2,3 +2,12 @@ llama-index-core
 llama-parse 
 llama-index-readers-file 
 python-dotenv
+langchain-core
+langchain-groq
+langchain
+langchain_mistralai
+airflow
+faiss-cpu
+sentence-transformers
+biomart
+pyarrow
