@@ -17,9 +17,9 @@ from typing import List, Optional
 
 sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 
-from RAG.vectorstore_ontology import VectorStore
-from RAG.get_disease_terms import prepare_disease_synonyms
-from RAG.get_gene_synonyms import prepare_gene_synonyms
+from RAG_term_normalisation.vectorstore_ontology import VectorStore
+from RAG_term_normalisation.get_disease_terms import prepare_disease_synonyms
+from RAG_term_normalisation.get_gene_synonyms import prepare_gene_synonyms
 from pipeline.helpers import log_progress
 from dotenv import load_dotenv
 load_dotenv()
@@ -70,11 +70,7 @@ def extract_abstract_info(abstract_text, model = 'mistral'):
 
 6. organism: The type of organism for which the evidence is provided. Can be 'cell line', 'PDX', 'animal', 'human', or 'n/a' if not specified. Use 'animal' if any of the following are mentioned: mouse, mice, rat, rabbit, guinea pig, hamster, dog, pig, monkey, or primate. If multiple organism types are used, list all that apply.
 
-7. trial_stage: The stage of the trial or study. Can be 'preclinical', 'Phase I', 'Phase II', 'Phase III', 'post-approval', or 'n/a' if not applicable or not specified.
-
-8. compound_name: The name of the compound or drug mentioned in the abstract. E.g. 'GS-P-328', 'IOMX-0675', or 'Pembrolizumab'
-
-9. abstract_category: Assign the abstract to one of the following categories: 'Gene-Disease Associations' if it is about the impact of some genes on the disease, 'Diagnostics' if it is about methods for diagnosis and does not provide a novel finding on a gene, or 'Other'. Choose the most appropriate category based on the main focus of the abstract.
+7. compound_name: The name of the compound or drug mentioned in the abstract. E.g. 'GS-P-328', 'IOMX-0675', or 'Pembrolizumab', or 'n/a' if not applicable or not specified.
 
 Follow these guidelines strictly:
 - For the abstract number, extract ONLY the 4-digit number. Ignore any other characters.
@@ -93,39 +89,6 @@ Accuracy is paramount. It is better to omit information than to provide potentia
     result = extraction_chain.invoke({"text": abstract_text})
     return result
  
-
-
-@task
-def process_abstracts_partition(batch_pages: List[int], model = 'groq', **kwargs):
-    ti = kwargs['ti']
-    pages_processed_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, 'processed_pages')    
-    pages_parsed_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, f'parsed_pages_{model}')    
-    os.makedirs(pages_parsed_dir, exist_ok=True)   
-    
-    for i in batch_pages:
-        
-        input_file = os.path.join(pages_processed_dir, f'page_{i+1}.json')
-        output_file = os.path.join(pages_parsed_dir, f'page_{i+1}.json')
-        
-        if os.path.exists(output_file):
-            log_progress(ti,f"Skipping page {i+1} as it has already been processed.")
-            continue
-        
-        log_progress(ti,f"Processing page {i+1} with model {model}...")
-        with open(input_file) as f:
-            abstract = json.load(f)
-        abstract_text = abstract[0].get('content')
-        
-        # %%
-        result = extract_abstract_info(abstract_text, model='groq')
-        abstract_dict = result.dict()
-        abstract_dict['text'] = abstract_text
-        abstract_dict['page_number'] = abstract[0].get('page_number')
-        
-        json_result = json.dumps(abstract_dict, indent=2)        
-        
-        with open(output_file, 'w') as f:
-            f.write(json_result)
         
 
 #@task
@@ -142,17 +105,3 @@ def create_jsonl_from_parsed_pages(**kwargs):
                 jsonl_file.write('\n')
     
  #   log_progress(ti, f"Created JSONL file: {output_jsonl}")
-
-@task
-def process_and_merge_abstracts(processed_partition_files):
-    processed_partitions = []
-    for processed_partition_file in processed_partition_files:
-        with open(processed_partition_file, 'r') as f:
-            processed_abstracts = json.load(f)
-        processed_partitions.extend(processed_abstracts)
-    
-    output_file = os.path.join(STORAGE_DIR,ENVIRONMENT, 'merged_processed_abstracts.json')
-    with open(output_file, 'w') as f:
-        json.dump(processed_partitions, f, indent=2)
-    
-    return output_file
