@@ -3,7 +3,6 @@ import requests
  
 from biomart import BiomartServer
 import pandas as pd
-from dagster import asset
 import os
 import gzip
 import shutil
