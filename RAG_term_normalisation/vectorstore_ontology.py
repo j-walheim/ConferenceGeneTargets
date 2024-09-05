@@ -14,18 +14,19 @@ class VectorStore:
         self.gene_lookup = None
         self.disease_lookup = None
 
-    def prepare_lookups(self, gene_synonyms, disease_synonyms):
-        self.gene_lookup = [
+    def prepare_gene_lookup(self, gene_synonyms):
+        self.lookup = [
             (synonym, row['Symbol'])
             for _, row in gene_synonyms.iterrows()
             for synonym in (row['Synonyms'].split(';') if row['Synonyms'] != '-' else [row['Symbol']])
         ]
-        self.disease_lookup = [
+
+    def prepare_disease_lookup(self, disease_synonyms):
+        self.lookup = [
             (synonym, row['disease'])
             for _, row in disease_synonyms.iterrows()
             for synonym in row['synonym'].split(';')
         ]
-
 
     def add_to_index(self, index, lookup):
         for synonym, _ in tqdm(lookup, desc="Adding to index"):
@@ -53,13 +54,9 @@ class VectorStore:
     def retrieve(self, index, query, k=5):
         query_vector = self.model.encode([query])
         D, I = index.search(query_vector, k)
-        lookup = self.gene_lookup if index is self.gene_index else self.disease_lookup
-        res = [lookup[i] for i in I[0]]
+        res = [self.lookup[i] for i in I[0]]
         
         return [f"Primary: '{primary}'; Synonym: '{synonym}'" for synonym, primary in res]
-
-        
-
 
     def rag(self, query):
         disease_context = self.retrieve(self.disease_index, query, k=2)
