@@ -4,7 +4,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
-from pipeline.process_abstract import extract_target_from_abstract
+from pipeline.process_target_information import extract_target_from_abstract
 import json
 import pandas as pd
 

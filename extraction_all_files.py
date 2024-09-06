@@ -4,7 +4,8 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
-from pipeline.process_abstract import extract_abstract_info
+from pipeline.process_target_information import extract_target_from_abstract
+# from pipeline.process_disease_information import extract_disease_info
 import json
 import pandas as pd
 import os
@@ -12,12 +13,12 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-model = 'mistral'
+model = 'groq'
 # %% 
 # Load the CSV file
 import pandas as pd
 
-abstracts_df = pd.read_csv('data/abstracts_15.csv')
+abstracts_df = pd.read_csv('data/abstracts_20.csv')
 
 pages_processed_dir = 'data/production/processed_pages'
 pages_parsed_dir = f'data/production/parsed_pages_{model}'
@@ -35,7 +36,7 @@ for _, row in abstracts_df.iterrows():
     print(f"Processing page {page_number} with model {model}...")
     
     # %%
-    result = extract_abstract_info(abstract_text, model=model)
+    result = extract_target_from_abstract(abstract_text, model=model)
     abstract_dict = result.dict()
     abstract_dict['text'] = abstract_text
     abstract_dict['page_number'] = page_number

@@ -13,7 +13,7 @@ sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
 from pipeline.ingestion_pdf import process_pdf_partition, combine_pdf_partitions, download_pdf_task, partition_into_batches
 from pipeline.config import NUM_PARTITIONS, MAX_ACTIVE_TASKS, STORAGE_DIR, ENVIRONMENT
 dotenv.load_dotenv()
-from pipeline.process_abstract import create_jsonl_from_parsed_pages, process_abstracts_partition, process_and_merge_abstracts
+from pipeline.process_target_information import create_jsonl_from_parsed_pages, process_abstracts_partition, process_and_merge_abstracts
 
 import json
 from PyPDF2 import PdfReader
