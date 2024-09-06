@@ -2,7 +2,7 @@ from .utils import get_llm, create_extraction_chain, vectorstore
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage
 from pydantic import BaseModel, Field
-from defs.abstract_class import Abstract
+from defs.abstract_class import Target
 
 def create_prompt(abstract_text, gene_context):
 
@@ -166,7 +166,7 @@ def extract_target_from_abstract(abstract_text, model='groq', vectorstore=None):
         SystemMessage(content=create_prompt(abstract_text, gene_context))
     ])
 
-    extraction_chain = create_extraction_chain(prompt, llm, Abstract)
+    extraction_chain = create_extraction_chain(prompt, llm, Target)
     result = extraction_chain.invoke({"text": abstract_text})
     return result
 

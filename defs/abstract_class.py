@@ -25,7 +25,7 @@ class GeneDisease(BaseModel):
 #     organism: Optional[List[str]] = Field(description="The types of organism used in the study. Must be 'cell line', 'PDX', 'animal', 'human', or 'n/a' if not applicable or not specified.")
 #     compound_name: Optional[str] = Field(description="The name of the compound or drug mentioned in the abstract. E.g. 'GS-P-328', 'IOMX-0675', or 'Pembrolizumab', or 'n/a' if not applicable or not specified.")
 
-class Abstract(BaseModel):
+class Target(BaseModel):
     """Information extracted from an academic abstract."""
     Target: Optional[str] = Field(description="The primary gene target that impacts the disease and can be modulated to change the disease")
 
