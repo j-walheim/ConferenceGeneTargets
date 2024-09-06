@@ -4,11 +4,10 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
-from pipeline.process_abstract import extract_abstract_info
+from pipeline.process_abstract import extract_target_from_abstract
 import json
 import pandas as pd
 
-from pipeline.process_abstract import process_abstracts_partition
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -25,7 +24,7 @@ abstract_text = abstract[0].get('content')
 
 
 # %%
-result = extract_abstract_info(abstract_text,model = 'mistral')
+result = extract_target_from_abstract(abstract_text,model = 'mistral')
 
 abstract_dict = result.dict()
 abstract_dict['text'] = abstract_text
