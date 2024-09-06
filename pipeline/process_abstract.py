@@ -1,34 +1,10 @@
-import os
-import sys
-from typing import List
-from langchain_groq import ChatGroq
-from langchain_mistralai import ChatMistralAI
+from .utils import get_llm, create_extraction_chain, vectorstore
 from langchain.prompts import ChatPromptTemplate
-from defs.abstract_class import Abstract
-import json
-import glob
-from .config import STORAGE_DIR, ENVIRONMENT
-from dotenv import load_dotenv
 from langchain_core.messages import SystemMessage
+from pydantic import BaseModel, Field
+from defs.abstract_class import Abstract
 
-sys.path.append('/teamspace/studios/this_studio/ConferenceGeneTargets')
-
-from RAG_term_normalisation.vectorstore_ontology import VectorStore
-from RAG_term_normalisation.get_gene_synonyms import prepare_gene_synonyms
-
-load_dotenv()
-
-# Prepare gene synonyms
-gene_synonyms = prepare_gene_synonyms()
-vectorstore = VectorStore()
-vectorstore.prepare_gene_lookup(gene_synonyms)
-vectorstore.prepare_vectorstores()
-
-
-######################################## PROMPT ELEMENTS ########################################
-
-
-def create_prompt(abstract_text):
+def create_prompt(abstract_text, gene_context):
 
     ##### Prompt element 1: `user` role
     # Make sure that your Messages API call always starts with a `user` role in the messages array.
@@ -51,7 +27,8 @@ def create_prompt(abstract_text):
     INPUT_DATA = f"""This is the abstract text. Only extract information from here.
     <abstract_text>
     {abstract_text}
-    </abstract_text>"""
+    </abstract_text>
+    """
 
     ##### Prompt element 5: Examples
     # Provide LLM with at least one example of an ideal response that it can emulate. Encase this in <example></example> XML tags. Feel free to provide multiple examples.
@@ -114,6 +91,11 @@ def create_prompt(abstract_text):
     <abstract_text>
     {abstract_text}
     </abstract_text>
+
+    All extracted genes must be part of this context:
+    <gene_context>
+    {gene_context}
+    </gene_context>
     
     """
 
@@ -176,36 +158,17 @@ def create_prompt(abstract_text):
 
     return PROMPT
 
-
-def extract_target_from_abstract(abstract_text, model = 'groq'):
+def extract_target_from_abstract(abstract_text, model='groq', vectorstore=None):
+    llm = get_llm(model)
+    gene_context = vectorstore.rag('gene', abstract_text) if vectorstore else ""
     
-    if model == 'mistral':
-        llm = ChatMistralAI(
-        model='mistral-large-latest',#'mistral-large-latest',
-        temperature=0 )
-    else:
-        llm = ChatGroq(
-            model='llama-3.1-70b-versatile',
-            temperature=0,
-            max_tokens=None,
-            timeout=None,
-            max_retries=2
-        )
-
-    gene_context, disease_context = vectorstore.rag(abstract_text)
-    
-    print(gene_context, disease_context)
-
-
     prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=create_prompt(abstract_text))
+        SystemMessage(content=create_prompt(abstract_text, gene_context))
     ])
-  
-    # Create the extraction chain
-    extraction_chain = prompt | llm.with_structured_output(schema=Abstract)
+
+    extraction_chain = create_extraction_chain(prompt, llm, Abstract)
     result = extraction_chain.invoke({"text": abstract_text})
     return result
-   
 
 #@task
 def create_jsonl_from_parsed_pages(**kwargs):
@@ -219,5 +182,3 @@ def create_jsonl_from_parsed_pages(**kwargs):
                 abstract_dict = json.load(json_file)
                 json.dump(abstract_dict, jsonl_file)
                 jsonl_file.write('\n')
-    
- #   log_progress(ti, f"Created JSONL file: {output_jsonl}")
