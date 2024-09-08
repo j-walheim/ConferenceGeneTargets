@@ -14,7 +14,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-model = 'groq'
+model = 'gpt-4o'
 # %% 
 # Load the CSV file
 import pandas as pd
@@ -40,7 +40,7 @@ for _, row in abstracts_df.iterrows():
     
     # %%
     result = extract_target_from_abstract(abstract_text, model=model, vectorstore=vectorstore)
-    abstract_dict = result.dict()
+    abstract_dict = {"Target": result} if result else {"Target": None}
     abstract_dict['text'] = abstract_text
     abstract_dict['page_number'] = page_number
     

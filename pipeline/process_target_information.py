@@ -1,6 +1,4 @@
 from .utils import get_llm, create_extraction_chain
-from langchain.prompts import ChatPromptTemplate
-from langchain_core.messages import SystemMessage
 from pydantic import BaseModel, Field
 from defs.abstract_class import Target, AllGenes
 
@@ -14,7 +12,7 @@ def create_initial_prompt_all_genes(abstract_text):
     </abstract_text>
     
     Make sure to focus on ALL genes or proteins that are mentioned in the abstract, regardless of whether they are biomarkers or drug targets themselves.
-    If a gene is mentioned in the abstract, extract it.
+    If a gene is mentioned in the abstract, extract it. Extract all genes separately, if a fusion is mentioned, extract the two genes separately.
 
     <examples>
     <example>
@@ -24,10 +22,10 @@ def create_initial_prompt_all_genes(abstract_text):
     Epidermal growth factor receptor is commonly mutated in lung cancer. // Target: Epidermal growth factor receptor
     </example>
     <example>
-    Inhibiting B-cells shows beneficial effects in PDAC. // Target: None
+    Inhibiting B-cells shows beneficial effects in PDAC. // Target: 
     </example>
     <example>
-    SDJS, a novel cell type identified by FACS, can be activated against cancer cells. // Target: None
+    SDJS, a novel cell type identified by FACS, can be activated against cancer cells. // Target: 
     </example>
     </examples>
     Your task is to retrieve all gene names, gene symbols or protein names that are mentioned in the abstract.
@@ -144,7 +142,6 @@ def create_prompt(abstract_text, gene_context):
     # "Remind" LLM or tell LLM exactly what it's expected to immediately do to fulfill the prompt's task.
     # This is also where you would put in additional variables like the user's question.
     # It generally doesn't hurt to reiterate to LLM its immediate task. It's best to do this toward the end of a long prompt.
-    # This will yield better results than putting this at the beginning.
     # It is also generally good practice to put the user's query close to the bottom of the prompt.
     IMMEDIATE_TASK = ""
 
@@ -202,32 +199,24 @@ def create_prompt(abstract_text, gene_context):
 def extract_target_from_abstract(abstract_text, model='groq', vectorstore=None):
     llm = get_llm(model)
 
-    # First, extract potential genes from the abstract
-    initial_prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=create_initial_prompt_all_genes(abstract_text))
-    ])
-
-    initial_chain = create_extraction_chain(initial_prompt, llm, AllGenes)
-    potential_genes = initial_chain.invoke({"text": abstract_text})
+    # First, extract potential genes from the abstract
+    initial_prompt = create_initial_prompt_all_genes(abstract_text)
+    potential_genes = create_extraction_chain(initial_prompt, llm, AllGenes)
     
     print("potential_genes: ", potential_genes)
     # Get context for potential genes using vectorstore
     gene_context = []
-    if vectorstore and potential_genes and potential_genes.genes:
-        for gene in potential_genes.genes:
+    if vectorstore and len(potential_genes) > 0:
+        for gene in potential_genes:
             context = vectorstore.rag('genes', gene)
-            if context:
-                gene_context.append(f"{gene}: {context}")
+            gene_context.append(f"{gene}: {context}")
     
     print("gene_context: ", gene_context)
 
     # Create the final prompt with the abstract and gene context
-    final_prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=create_prompt(abstract_text, gene_context))
-    ])
+    final_prompt = create_prompt(abstract_text, gene_context)
     
-    extraction_chain = create_extraction_chain(final_prompt, llm, Target)
-    result = extraction_chain.invoke({"text": abstract_text})
+    result = create_extraction_chain(final_prompt, llm, Target)
     return result
 
 #@task
