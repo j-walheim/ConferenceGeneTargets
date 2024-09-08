@@ -11,13 +11,15 @@ from RAG_term_normalisation.get_gene_synonyms import prepare_gene_synonyms
 
 load_dotenv()
 
-# Prepare disease and gene synonyms
-disease_synonyms = prepare_disease_synonyms()
-gene_synonyms = prepare_gene_synonyms()
-vectorstore = VectorStore()
-vectorstore.prepare_lookup(gene_synonyms, 'genes', 'Symbol', 'Synonyms')
-vectorstore.prepare_lookup(disease_synonyms, 'diseases', 'disease', 'synonym')
-vectorstore.prepare_vectorstores()
+def initialize_vectorstore():
+    # Prepare disease and gene synonyms
+    disease_synonyms = prepare_disease_synonyms()
+    gene_synonyms = prepare_gene_synonyms()
+    vectorstore = VectorStore()
+    vectorstore.prepare_lookup(gene_synonyms, 'genes', 'Symbol', 'Synonyms', description_col='description')
+    vectorstore.prepare_lookup(disease_synonyms, 'diseases', 'disease', 'synonym')
+    vectorstore.prepare_vectorstores()
+    return vectorstore
 
 def get_llm(model='groq'):
     if model == 'mistral':

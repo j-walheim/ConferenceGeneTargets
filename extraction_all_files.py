@@ -4,6 +4,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
+from pipeline.utils import initialize_vectorstore
 from pipeline.process_target_information import extract_target_from_abstract
 # from pipeline.process_disease_information import extract_disease_info
 import json
@@ -24,6 +25,8 @@ pages_processed_dir = 'data/production/processed_pages'
 pages_parsed_dir = f'data/production/parsed_pages_{model}'
 os.makedirs(pages_parsed_dir, exist_ok=True)   
 
+vectorstore = initialize_vectorstore()
+
 for _, row in abstracts_df.iterrows():
     page_number = row['page_number']
     abstract_text = row['content']
@@ -36,7 +39,7 @@ for _, row in abstracts_df.iterrows():
     print(f"Processing page {page_number} with model {model}...")
     
     # %%
-    result = extract_target_from_abstract(abstract_text, model=model)
+    result = extract_target_from_abstract(abstract_text, model=model, vectorstore=vectorstore)
     abstract_dict = result.dict()
     abstract_dict['text'] = abstract_text
     abstract_dict['page_number'] = page_number

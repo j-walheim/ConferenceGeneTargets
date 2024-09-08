@@ -1,8 +1,46 @@
-from .utils import get_llm, create_extraction_chain, vectorstore
+from .utils import get_llm, create_extraction_chain
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage
 from pydantic import BaseModel, Field
-from defs.abstract_class import Target
+from defs.abstract_class import Target, AllGenes
+
+
+def create_initial_prompt_all_genes(abstract_text):
+    return f"""
+    You are an expert at extracting gene or protein names from academic abstracts.
+    This is the abstract text. Only extract information from here.
+    <abstract_text>
+    {abstract_text}
+    </abstract_text>
+    
+    Make sure to focus on ALL genes or proteins that are mentioned in the abstract, regardless of whether they are biomarkers or drug targets themselves.
+    If a gene is mentioned in the abstract, extract it.
+
+    <examples>
+    <example>
+    PD-L1 is able to stratify patients responding to LAG-3 therapy. // Target: PD-L1, LAG-3
+    </example>
+    <example>
+    Epidermal growth factor receptor is commonly mutated in lung cancer. // Target: Epidermal growth factor receptor
+    </example>
+    <example>
+    Inhibiting B-cells shows beneficial effects in PDAC. // Target: None
+    </example>
+    <example>
+    SDJS, a novel cell type identified by FACS, can be activated against cancer cells. // Target: None
+    </example>
+    </examples>
+    Your task is to retrieve all gene names, gene symbols or protein names that are mentioned in the abstract.
+    
+    Rules: 
+    - Accuracy is paramount. It is better to omit information than to provide potentially incorrect data. Under no circumstances should you guess or make assumptions about any data.
+    - Do not attempt to fill in missing information based on context or general knowledge.
+    
+    Before extracting any gene, ask yourself "is this a gene or a protein?" If the answer is yes, include it. Otherwise, exclude it.
+
+    ONLY output to gene name or gene names in <answer> tags
+    """
+
 
 def create_prompt(abstract_text, gene_context):
 
@@ -36,7 +74,7 @@ def create_prompt(abstract_text, gene_context):
     # Examples are probably the single most effective tool in knowledge work for getting LLM to behave as desired.
     # Make sure to give LLM examples of common edge cases. If your prompt uses a scratchpad, it's effective to give examples of how the scratchpad should look.
     # Generally more examples = better.
-    EXAMPLES = """Make sure to focus on the target that is or can be modulated. Ignore biomarkers and/or pathways with predictive or prognostic value. Ignore any gene that is not directly modulated or can be modulated to change the disease.
+    EXAMPLES = """Make sure to focus on ALL targets that are or can be modulated. Ignore biomarkers and/or pathways with predictive or prognostic value. Ignore any gene that is not directly modulated or can be modulated to change the disease.
 
     <examples>
     <example>
@@ -68,6 +106,9 @@ def create_prompt(abstract_text, gene_context):
     <example>
     BRAF melanoma cancers. // Target: None
     </example>
+    <example>
+    The inhibition of IL2, and the activation of IL13 . // Target: IL2, IL13
+    </example>
     </examples>"""
 
     ##### Prompt element 6: Detailed task description and rules
@@ -75,7 +116,7 @@ def create_prompt(abstract_text, gene_context):
     # This is also where you can give LLM an "out" if it doesn't have an answer or doesn't know.
     # It's ideal to show this description and rules to a friend to make sure it is laid out logically and that any ambiguous words are clearly defined.
     TASK_DESCRIPTION = """
-    Your task is to extract Find the primary gene target that is expicitely stated to impact the disease and can be modulated to change the disease or is used to selectively 
+    Your task is to extract the primary gene targets that is expicitely stated to impact the disease and can be modulated to change the disease or is used to selectively 
     and specifically target the disease in the abstract. If a pathway is mentioned, try to get the key gene in the pathway. Modulation can include inhibition, activation, knocked-in, 
     knocked-out, or any other type of modulation. 
     It can be stated that the drug is targeting, acting on, acting against, having high selectivity, having avidity, binding to a certain target.
@@ -92,7 +133,7 @@ def create_prompt(abstract_text, gene_context):
     {abstract_text}
     </abstract_text>
 
-    All extracted genes must be part of this context:
+    All extracted genes must be part of this context. If nothing is provided as context, do not include the gene. Translate the gene names to synonyms if necessary.
     <gene_context>
     {gene_context}
     </gene_context>
@@ -112,7 +153,7 @@ def create_prompt(abstract_text, gene_context):
     # Sometimes, you might have to even say "Before you give your answer..." just to make sure LLM does this first.
     # Not necessary with all prompts, though if included, it's best to do this toward the end of a long prompt and right after the final immediate task request or description.
     # PRECOGNITION = "Before you answer, pull out the most relevant quotes from the research in <relevant_quotes> tags."
-    PRECOGNITION = "Before you answer, make sure that the targets are not biomarkers or refering to characteristics of the disease, rather than drug targets."
+    PRECOGNITION = "Before you answer, ask yourself 'is this a gene or protein that is modulated to change the disease?' Ignore any gene that is not directly modulated, but is only reported as biomarker or signal for a biological process."
 
     ##### Prompt element 9: Output formatting
     # If there is a specific way you want LLM's response formatted, clearly tell LLM what that format is.
@@ -160,13 +201,32 @@ def create_prompt(abstract_text, gene_context):
 
 def extract_target_from_abstract(abstract_text, model='groq', vectorstore=None):
     llm = get_llm(model)
-    gene_context = vectorstore.rag('gene', abstract_text) if vectorstore else ""
-    
-    prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=create_prompt(abstract_text, gene_context))
+
+    # First, extract potential genes from the abstract
+    initial_prompt = ChatPromptTemplate.from_messages([
+        SystemMessage(content=create_initial_prompt_all_genes(abstract_text))
     ])
 
-    extraction_chain = create_extraction_chain(prompt, llm, Target)
+    initial_chain = create_extraction_chain(initial_prompt, llm, AllGenes)
+    potential_genes = initial_chain.invoke({"text": abstract_text})
+    
+    print("potential_genes: ", potential_genes)
+    # Get context for potential genes using vectorstore
+    gene_context = []
+    if vectorstore and potential_genes and potential_genes.genes:
+        for gene in potential_genes.genes:
+            context = vectorstore.rag('genes', gene)
+            if context:
+                gene_context.append(f"{gene}: {context}")
+    
+    print("gene_context: ", gene_context)
+
+    # Create the final prompt with the abstract and gene context
+    final_prompt = ChatPromptTemplate.from_messages([
+        SystemMessage(content=create_prompt(abstract_text, gene_context))
+    ])
+    
+    extraction_chain = create_extraction_chain(final_prompt, llm, Target)
     result = extraction_chain.invoke({"text": abstract_text})
     return result
 

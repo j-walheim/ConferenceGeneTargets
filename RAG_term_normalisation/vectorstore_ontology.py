@@ -13,23 +13,36 @@ class VectorStore:
         self.indexes = {}
         self.lookups = {}
 
-    def prepare_lookup(self, data, name, synonym_col, official_col):
-        self.lookups[name] = [
-            (synonym, row[official_col])
-            for _, row in data.iterrows()
-            for synonym in row[synonym_col].split(';') if row[synonym_col] != '-'
-        ]
+    def prepare_lookup(self, data, name, synonym_col, official_col, description_col=None):
+        if description_col:
+            self.lookups[name] = [
+                (synonym, row[official_col], row[description_col])
+                for _, row in data.iterrows()
+                for synonym in row[synonym_col].split(';') if row[synonym_col] != '-'
+            ]
+        else:
+            self.lookups[name] = [
+                (synonym, row[official_col])
+                for _, row in data.iterrows()
+                for synonym in row[synonym_col].split(';') if row[synonym_col] != '-'
+            ]
 
     def create_or_load_index(self, name):
-        index = faiss.IndexFlatL2(self.dimension)
+        index = faiss.IndexFlatIP(self.dimension)
         vectorstore_path = os.path.join(self.vectorstore_dir, f"vectorstore_{name}.index")
         if os.path.exists(vectorstore_path):
             print(f"Loading existing {name} vectorstore from {vectorstore_path}")
             index = faiss.read_index(vectorstore_path)
         else:
             print(f"Creating new {name} vectorstore at {vectorstore_path}")
-            for synonym, _ in tqdm(self.lookups[name], desc=f"Adding to {name} index"):
-                index.add(np.array(self.model.encode([synonym])))
+            for item in tqdm(self.lookups[name], desc=f"Adding to {name} index"):
+                synonym = item[0]
+                text_to_encode = synonym
+                if len(item) > 2 and item[2]:  # Check if third column exists and is not empty
+                    text_to_encode += f" {item[2]}"
+                vector = self.model.encode([text_to_encode])
+                faiss.normalize_L2(vector)
+                index.add(vector)
             faiss.write_index(index, vectorstore_path)
         self.indexes[name] = index
 
@@ -39,11 +52,19 @@ class VectorStore:
             self.create_or_load_index(name)
 
     def retrieve(self, name, query):
-        D, I = self.indexes[name].search(np.array(self.model.encode([query])), k=5)
+        # Normalize the query vector
+        query_vector = self.model.encode([query])
+        faiss.normalize_L2(query_vector)
+        # Ensure query_vector is a 2D numpy array
+        query_vector = query_vector.reshape(1, -1)
+        
+        D, I = self.indexes[name].search(query_vector, k=5)
         logging.info(f"Query: {query}, Search results: D={D}, I={I}")
         
-        results = [self.lookups[name][i] for i in I[0] if i < len(self.lookups[name])]
+        results = [self.lookups[name][i][0] for i in I[0] if i < len(self.lookups[name])]
         return ", ".join(results) if results else ""
 
     def rag(self, name, query):
         return self.retrieve(name, query)
+
+
