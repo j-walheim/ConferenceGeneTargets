@@ -19,7 +19,7 @@ model = 'gpt-4o'
 # Load the CSV file
 import pandas as pd
 
-abstracts_df = pd.read_csv('data/abstracts_20.csv')
+abstracts_df = pd.read_csv('data/abstracts_20_random.csv')
 
 pages_processed_dir = 'data/production/processed_pages'
 pages_parsed_dir = f'data/production/parsed_pages_{model}'
@@ -28,8 +28,8 @@ os.makedirs(pages_parsed_dir, exist_ok=True)
 vectorstore = initialize_vectorstore()
 
 for _, row in abstracts_df.iterrows():
-    page_number = row['page_number']
-    abstract_text = row['content']
+    page_number = row['page']
+    abstract_text = row['text']
     
     output_file = os.path.join(pages_parsed_dir, f'page_{page_number}.json')
     if os.path.exists(output_file):

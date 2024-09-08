@@ -27,6 +27,18 @@ def create_initial_prompt_all_genes(abstract_text):
     <example>
     SDJS, a novel cell type identified by FACS, can be activated against cancer cells. // Target: 
     </example>
+    <example>
+    Mice have been injected with 1000 ml NSCLC S23 cells. // Target: 
+    </example>
+    <example>
+    Azanobitin is a powerful medication for cancer. // Target: 
+    </example>
+    <example>
+    Degradation of Pdcd4 enhances enzalutamide resistance in prostate cancer. // Target: Pdcd4
+    </example>
+    <example>
+    High levels of WRP are indicative of advanced disease in breast cancer. // Target: WRP
+    </example>
     </examples>
     Your task is to retrieve all gene names, gene symbols or protein names that are mentioned in the abstract.
     
@@ -72,40 +84,40 @@ def create_prompt(abstract_text, gene_context):
     # Examples are probably the single most effective tool in knowledge work for getting LLM to behave as desired.
     # Make sure to give LLM examples of common edge cases. If your prompt uses a scratchpad, it's effective to give examples of how the scratchpad should look.
     # Generally more examples = better.
-    EXAMPLES = """Make sure to focus on ALL targets that are or can be modulated. Ignore biomarkers and/or pathways with predictive or prognostic value. Ignore any gene that is not directly modulated or can be modulated to change the disease.
+    EXAMPLES = """Make sure to focus on ALL targets that are or can be modulated. Focus only on gene targets, ignore cell lines, drugs and anything else. Ignore biomarkers and/or pathways with predictive or prognostic value. Ignore any gene that is not directly modulated or can be modulated to change the disease.
 
     <examples>
     <example>
     These data lay the foundation for first-in-human clinical translation of a T-cell based therapy targeting EWSR1-WT1 // Target: EWSR1-WT1
     </example>
     <example>
-    Reactive T cells were identified upon detection of secreted cytokines (IFNγ, TNFα, IL2) and measurement of 4-1BB (CD137) surface expression. // Target: None
+    Reactive T cells were identified upon detection of secreted cytokines (IFNγ, TNFα, IL2) and measurement of 4-1BB (CD137) surface expression. // Target:
     </example>
     <example>
     We use the chimeric costimulatory switch protein (CSP) PD1-41BB that turns the inhibitory signal mediated via the PD-1-PD-L1 axis into a costimulatory one. // Target: PD1-41BB
     </example>
     <example>
-    We screened ginsenoside Rb1 from 22 anti-aging compounds as the compound that had the most effective activity to reduce CD8+ T cell senescence. // Target: None
+    We screened ginsenoside Rb1 from 22 anti-aging compounds as the compound that had the most effective activity to reduce CD8+ T cell senescence. // Target:
     </example>
     <example>
-    This PDF contains all regular abstracts (submitted for the November 16, 2023 deadline) that were scheduled for presentation as of Monday, April 1, 2024. // Target: None
+    This PDF contains all regular abstracts (submitted for the November 16, 2023 deadline) that were scheduled for presentation as of Monday, April 1, 2024. // Target:
     </example>
     <example>
-    PD-L1 is able to stratify patients into responders vs. non-responders to immunotherapy. // Target: None
+    PD-L1 is able to stratify patients into responders vs. non-responders to immunotherapy. // Target:
     </example>
     <example>
-    KRAS expression alone has limited predictive value for immunotherapy in TNBC. // Target: None
+    KRAS expression alone has limited predictive value for immunotherapy in TNBC. // Target:
     <example>
-    EGFR is a prognostic biomarker. // Target: None
+    EGFR is a prognostic biomarker. // Target:
     </example>
     <example>
     We found novel drugs predicted against Ephrin-Type-A Receptor 2, chosen through preliminary literature and genomic analysis. // Target: EPHA2
     </example>
     <example>
-    BRAF melanoma cancers. // Target: None
+    BRAF melanoma cancers. // Target:
     </example>
     <example>
-    The inhibition of IL2, and the activation of IL13 . // Target: IL2, IL13
+    The inhibition of IL2, and the activation of IL13. // Target: IL2, IL13
     </example>
     </examples>"""
 
