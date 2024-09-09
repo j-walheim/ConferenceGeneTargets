@@ -124,7 +124,7 @@ class VectorStore_genes:
                 namespace="ns1"
             )
             
-            #time.sleep(1)
+            time.sleep(1)
             
     def retrieve(self,index_name, query):
         
@@ -142,7 +142,7 @@ class VectorStore_genes:
         results = index.query(
         namespace="ns1",
         vector=embedding[0].values,
-        top_k=3,
+        top_k=10,
         include_values=False,
         include_metadata=True
         )
