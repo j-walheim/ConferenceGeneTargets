@@ -3,23 +3,24 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, ValidationError
 from dotenv import load_dotenv
 import json
-from openai import AzureOpenAI
+from openai import AzureOpenAI,RateLimitError
 import requests
 from RAG_term_normalisation.vectorstore_gene_synonyms import VectorStore_genes
-
+import time
 import re
+from langfuse.decorators import observe, langfuse_context
 
 load_dotenv()
 
-def initialize_vectorstore():
-    # Prepare disease and gene synonyms
-    disease_synonyms = prepare_disease_synonyms()
-    gene_synonyms = prepare_gene_synonyms()
-    vectorstore = VectorStore()
-    vectorstore.prepare_lookup(gene_synonyms, 'genes', 'Symbol', 'Synonyms', description_col='description')
-    vectorstore.prepare_lookup(disease_synonyms, 'diseases', 'disease', 'synonym')
-    vectorstore.prepare_vectorstores()
-    return vectorstore
+# def initialize_vectorstore():
+#     # Prepare disease and gene synonyms
+#     disease_synonyms = prepare_disease_synonyms()
+#     gene_synonyms = prepare_gene_synonyms()
+#     vectorstore = VectorStore()
+#     vectorstore.prepare_lookup(gene_synonyms, 'genes', 'Symbol', 'Synonyms', description_col='description')
+#     vectorstore.prepare_lookup(disease_synonyms, 'diseases', 'disease', 'synonym')
+#     vectorstore.prepare_vectorstores()
+#     return vectorstore
 
 def get_llm(model='groq'):
     if model == 'mistral':
@@ -55,8 +56,13 @@ class AzureOpenAIAPI:
             api_version="2024-05-01-preview"
         )
         self.deployment_name = "gpt-4o"
+        
+
     def chat(self, messages):
-        while True:
+        max_retries = 5
+        retry_delay = 20
+
+        for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(
                     model=self.deployment_name,
@@ -64,13 +70,19 @@ class AzureOpenAIAPI:
                 )
                 response_message = response.choices[0].message
                 return response_message.content
-            except requests.exceptions.RequestException as e:
-               # if "openai.RateLimitError" in str(e):
-                print("Rate limit exceeded. Waiting for 20 seconds before retrying...")
-                time.sleep(20)
-                #else:
-                #    raise
+            except RateLimitError as e:
+                if attempt < max_retries - 1:
+                    print(f"Rate limit exceeded. Attempt {attempt + 1}/{max_retries}. Waiting for {retry_delay} seconds before retrying...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print("Max retries reached. Continuing with the next task.")
+                    return None  # Or a default message indicating the failure
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
+                return None  # Or a default message indicating the failure
 
+        return None  # In case all retries fail
 
 class GroqAPI:
     def __init__(self):
