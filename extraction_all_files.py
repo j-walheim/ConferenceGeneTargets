@@ -28,8 +28,8 @@ os.makedirs(pages_parsed_dir, exist_ok=True)
 vectorstore = initialize_vectorstore()
 
 for _, row in abstracts_df.iterrows():
-    page_number = row['page']
-    abstract_text = row['text']
+    page_number = row['Abstract Number']
+    abstract_text = row['Abstract']
     
     output_file = os.path.join(pages_parsed_dir, f'page_{page_number}.json')
     if os.path.exists(output_file):
