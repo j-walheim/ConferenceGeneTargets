@@ -52,7 +52,7 @@ def create_initial_prompt_all_genes(abstract_text):
     """
 
 
-def create_prompt(abstract_text, gene_context):
+def create_prompt(abstract_text, potential_genes, gene_context):
 
     ##### Prompt element 1: `user` role
     # Make sure that your Messages API call always starts with a `user` role in the messages array.
@@ -72,7 +72,9 @@ def create_prompt(abstract_text, gene_context):
     # If there is data that LLM needs to process within the prompt, include it here within relevant XML tags.
     # Feel free to include multiple pieces of data, but be sure to enclose each in its own set of XML tags.
     # This element may not be necessary depending on task. Ordering is also flexible.
-    INPUT_DATA = f"""This is the abstract text. Only extract information from here.
+    INPUT_DATA = f"""Only extract information from this abstract text. These are all the genes in the abstract: {potential_genes}. Your task is to filter out the genes that are not the primary targets of the study,
+    remove all gene names that are either biomarkes or are not the primary focus of the study (e.g. for comparison or background information).
+    This is the abstract text:
     <abstract_text>
     {abstract_text}
     </abstract_text>
@@ -84,7 +86,7 @@ def create_prompt(abstract_text, gene_context):
     # Examples are probably the single most effective tool in knowledge work for getting LLM to behave as desired.
     # Make sure to give LLM examples of common edge cases. If your prompt uses a scratchpad, it's effective to give examples of how the scratchpad should look.
     # Generally more examples = better.
-    EXAMPLES = """Make sure to focus on ALL targets that are or can be modulated. Focus only on gene targets, ignore cell lines, drugs and anything else. Ignore biomarkers and/or pathways with predictive or prognostic value. Ignore any gene that is not directly modulated or can be modulated to change the disease.
+    EXAMPLES = """Make sure to focus on the targets that are or can be modulated. Focus only on gene targets, ignore cell lines, drugs and anything else. Ignore biomarkers and/or pathways with predictive or prognostic value. Ignore any gene that is not directly modulated or can be modulated to change the disease.
 
     <examples>
     <example>
@@ -106,6 +108,9 @@ def create_prompt(abstract_text, gene_context):
     PD-L1 is able to stratify patients into responders vs. non-responders to immunotherapy. // Target:
     </example>
     <example>
+    Our compound shows better efficacy in preclinical models as compared to PARP inhibitors. // Target:
+    </example>
+    <example>
     KRAS expression alone has limited predictive value for immunotherapy in TNBC. // Target:
     <example>
     EGFR is a prognostic biomarker. // Target:
@@ -119,13 +124,16 @@ def create_prompt(abstract_text, gene_context):
     <example>
     The inhibition of IL2, and the activation of IL13. // Target: IL2, IL13
     </example>
+    <example>
+    MTPNR mutated patients show a better ORR in response to immunotherapy. // Target:
+    </example>
     </examples>"""
 
     ##### Prompt element 6: Detailed task description and rules
     # Expand on the specific tasks you want LLM to do, as well as any rules that LLM might have to follow.
     # This is also where you can give LLM an "out" if it doesn't have an answer or doesn't know.
     # It's ideal to show this description and rules to a friend to make sure it is laid out logically and that any ambiguous words are clearly defined.
-    TASK_DESCRIPTION = """
+    TASK_DESCRIPTION = f"""
     Your task is to extract the primary gene targets that is expicitely stated to impact the disease and can be modulated to change the disease or is used to selectively 
     and specifically target the disease in the abstract. If a pathway is mentioned, try to get the key gene in the pathway. Modulation can include inhibition, activation, knocked-in, 
     knocked-out, or any other type of modulation. 
@@ -138,17 +146,13 @@ def create_prompt(abstract_text, gene_context):
     If protein names are mentioned, use the gene symbol (e.g. TP53 for p53). The target could be a specific mutation or version of a gene, e.g. KRASG12D is a common mutation for KRAS. Extract KRAS in this case.
     Ignore biomarkers and/or pathways with predictive or prognostic value. Ignore any gene that is not directly modulated or can be modulated to change the disease.
 
-
-    <abstract_text>
-    {abstract_text}
-    </abstract_text>
-
-    All extracted genes must be part of this context. If nothing is provided as context, do not include the gene. Translate the gene names to synonyms if necessary.
-    <gene_context>
-    {gene_context}
-    </gene_context>
-    
     """
+
+    # All extracted genes must be part of this context. If nothing is provided as context, do not include the gene. Translate the gene names to synonyms if possible.
+    
+    # <gene_context> 
+    # {gene_context} 
+    # </gene_context>
 
     ##### Prompt element 7: Immediate task description or request #####
     # "Remind" LLM or tell LLM exactly what it's expected to immediately do to fulfill the prompt's task.
@@ -226,7 +230,8 @@ def extract_target_from_abstract(abstract_text, model='groq', vectorstore=None):
     print("gene_context: ", gene_context)
 
     # Create the final prompt with the abstract and gene context
-    final_prompt = create_prompt(abstract_text, gene_context)
+    final_prompt = create_prompt(abstract_text, potential_genes, gene_context)
+    print(final_prompt)
     
     result = create_extraction_chain(final_prompt, llm, Target)
     return result
