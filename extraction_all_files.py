@@ -29,7 +29,7 @@ vectorstore = initialize_vectorstore()
 
 for _, row in abstracts_df.iterrows():
     page_number = row['Abstract Number']
-    abstract_text = row['Abstract']
+    abstract_text = f"Title: {row['Title']}\n\n{row['Abstract']}"
     
     output_file = os.path.join(pages_parsed_dir, f'page_{page_number}.json')
     if os.path.exists(output_file):
