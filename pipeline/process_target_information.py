@@ -1,7 +1,5 @@
 from .utils import get_llm, create_extraction_chain
 from pydantic import BaseModel, Field
-from defs.abstract_class import Target, AllGenes
-
 
 def create_initial_prompt_all_genes(abstract_text):
     return f"""
@@ -48,16 +46,17 @@ def create_initial_prompt_all_genes(abstract_text):
     Rules: 
     - Accuracy is paramount. It is better to omit information than to provide potentially incorrect data. Under no circumstances should you guess or make assumptions about any data.
     - Do not attempt to fill in missing information based on context or general knowledge.
+    - If you are very confident about a gene synonym, take the official HUGO symbol. (e.g. ERBB2 is the official HUGO symbol for HER2)
     
     Before extracting any gene, ask yourself "is this a gene or a protein?" If the answer is yes, include it. Otherwise, exclude it. DO NOT INCLUDE DRUG NAMES.
 
-    Write your reasoning for classifying the entries as genes in <reasoning> </reasoning> tags.
+    Write your reasoning for classifying and selecting the entries as genes in <reasoning> </reasoning> tags.
 
-    Then ONLY output to gene name or gene names in <answer> tags
+    Output to gene name or gene names in <answer> </answer> tags
     """
 
 
-def create_prompt(abstract_text, potential_genes, gene_context):
+def create_prompt(abstract_text, potential_genes, gene_context, symbols_only):
 
     ##### Prompt element 1: `user` role
     # Make sure that your Messages API call always starts with a `user` role in the messages array.
@@ -132,6 +131,9 @@ def create_prompt(abstract_text, potential_genes, gene_context):
     <example>
     MTPNR mutated patients show a better ORR in response to immunotherapy. // Target:
     </example>
+    <example>
+    This PSAUR-directed antibody has far reaching potential in all solid turmos. // Target: PSAUR
+    </example>
     </examples>"""
 
     ##### Prompt element 6: Detailed task description and rules
@@ -150,10 +152,12 @@ def create_prompt(abstract_text, potential_genes, gene_context):
     If protein names are mentioned, use the gene symbol (e.g. TP53 for p53). The target could be a specific mutation or version of a gene, e.g. KRASG12D is a common mutation for KRAS. Extract KRAS in this case.
     Ignore predictive or progrostic genes/biomarkers and/or pathways. Ignore any gene that is not directly modulated or can be modulated to change the disease.
 
-    For the genes that are primary targets in the abstract, try to match genes to these lists. Use your knowledge on gene names and synonyms. If no match makes sense, use original name.
-     <gene_context> 
-     {gene_context} 
-     </gene_context>
+    We want to standardize the drug targets names to HUGO gene nomenclature. To faciliate this you can refer to the following relevant context: 
+    <gene_context> 
+    {gene_context} 
+    </gene_context>
+
+    Try to match genes to the following list, if you do not find a good mapping <synonym_list>{symbols_only}</synonym_list>, keep the original name.
     """
 
     # All extracted genes must be part of this context. If nothing is provided as context, do not include the gene. Translate the gene names to synonyms if possible.
@@ -180,7 +184,12 @@ def create_prompt(abstract_text, potential_genes, gene_context):
     # If there is a specific way you want LLM's response formatted, clearly tell LLM what that format is.
     # This element may not be necessary depending on the task.
     # If you include it, putting it toward the end of the prompt is better than at the beginning.
-    OUTPUT_FORMATTING = "ONLY output to gene name or gene names in <answer> tags. If no gene is a drug target, output <answer></answer>."
+    OUTPUT_FORMATTING = """
+    
+    First, write your reasoning for classifying and selecting the entries as targets in <reasoning> </reasoning> tags.
+
+    Then, output to gene name or gene names in <answer> </answer> tags. If no gene is a drug target, output <answer></answer>.
+    """
 
     ##### Prompt element 10: Prefilling LLM's response (if any)
     # A space to start off LLM's answer with some prefilled words to steer LLM's behavior or response.
@@ -222,27 +231,42 @@ def create_prompt(abstract_text, potential_genes, gene_context):
 
 def extract_target_from_abstract(abstract_text, model='groq', vectorstore=None):
     llm = get_llm(model)
-
     # First, extract potential genes from the abstract
     initial_prompt = create_initial_prompt_all_genes(abstract_text)
-    potential_genes = create_extraction_chain(initial_prompt, llm, AllGenes)
+    results_first_prompt = create_extraction_chain(initial_prompt, llm)
+    print("results_first_prompt: ", results_first_prompt)
     
-    print("potential_genes: ", potential_genes)
+    potential_genes = []
+    reasoning = ""
+    if isinstance(results_first_prompt, dict):
+        potential_genes = results_first_prompt.get('extracted', [])
+        reasoning = results_first_prompt.get('reasoning', [""])[0]
+    else:
+        print(f"Unexpected type for results_first_prompt: {type(results_first_prompt)}")
+    
+    print("Potential genes:", potential_genes)
+    
     # Get context for potential genes using vectorstore
     gene_context = [""]
+    symbols_only = [""]
     if vectorstore and len(potential_genes) > 0:
         for gene in potential_genes:
-            context = vectorstore.rag('genes', gene)
+            context = vectorstore.retrieve('gene-index', gene)
+            # Symbols only
+            symbols_only = [item['symbol'] for item in context]
+
             gene_context.append(f"{gene}: {context}")
     
     print("gene_context: ", gene_context)
 
     # Create the final prompt with the abstract and gene context
-    final_prompt = create_prompt(abstract_text, potential_genes, gene_context)
-    print(final_prompt)
+    second_prompt = create_prompt(abstract_text, potential_genes, gene_context, symbols_only)
+    result_second_prompt = create_extraction_chain(second_prompt, llm)
+
+    reasoning_second_prompt = result_second_prompt.get('reasoning', [""])[0]
+    targets = result_second_prompt.get('extracted', [])
     
-    result = create_extraction_chain(final_prompt, llm, Target)
-    return result
+    return reasoning, potential_genes, gene_context, symbols_only, reasoning_second_prompt, targets
 
 #@task
 def create_jsonl_from_parsed_pages(**kwargs):

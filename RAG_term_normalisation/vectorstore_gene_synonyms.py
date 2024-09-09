@@ -8,6 +8,9 @@ from pinecone import Pinecone, ServerlessSpec
 import time 
 import pandas as pd
 import requests 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class VectorStore_genes:
     def __init__(self):

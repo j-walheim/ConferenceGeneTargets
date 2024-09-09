@@ -5,9 +5,8 @@ from dotenv import load_dotenv
 import json
 from openai import AzureOpenAI
 import requests
-from RAG_term_normalisation.vectorstore_ontology import VectorStore
-from RAG_term_normalisation.get_disease_terms import prepare_disease_synonyms
-from RAG_term_normalisation.get_gene_synonyms import prepare_gene_synonyms
+from RAG_term_normalisation.vectorstore_gene_synonyms import VectorStore_genes
+
 import re
 
 load_dotenv()
@@ -57,12 +56,21 @@ class AzureOpenAIAPI:
         )
         self.deployment_name = "gpt-4o"
     def chat(self, messages):
-        response = self.client.chat.completions.create(
-            model=self.deployment_name,
-            messages=messages
-        )
-        response_message = response.choices[0].message
-        return response_message.content
+        while True:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.deployment_name,
+                    messages=messages
+                )
+                response_message = response.choices[0].message
+                return response_message.content
+            except requests.exceptions.RequestException as e:
+               # if "openai.RateLimitError" in str(e):
+                print("Rate limit exceeded. Waiting for 20 seconds before retrying...")
+                time.sleep(20)
+                #else:
+                #    raise
+
 
 class GroqAPI:
     def __init__(self):
@@ -82,17 +90,24 @@ class GroqAPI:
         response = requests.post(self.base_url, headers=headers, json=data)
         return response.json()['choices'][0]['message']['content']
 
-def create_extraction_chain(prompt, llm, schema):
+def create_extraction_chain(prompt, llm):
     messages = [
         {"role": "user", "content": prompt}
     ]
     response = llm.chat(messages)
 
+    reasoning = re.findall(r'<reasoning>(.*?)</reasoning>', response, re.DOTALL)
     # Extract content between <answer> tags
     extracted = re.findall(r'<answer>(.*?)</answer>', response, re.DOTALL)
     
     # Remove any empty strings from the extracted list and split by comma
     extracted = [item.strip() for item in ','.join(extracted).split(',') if item.strip()]
     
-    # Return the list if it's not empty, otherwise return an empty list
-    return extracted if extracted else []
+    # Prepare the result dictionary
+    result = {
+        "reasoning": reasoning if reasoning else "",
+        "extracted": extracted if extracted else []
+    }
+    
+    # Return the dictionary containing both reasoning and extracted items
+    return result

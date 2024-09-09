@@ -6,6 +6,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
 from pipeline.utils import initialize_vectorstore
 from pipeline.process_target_information import extract_target_from_abstract
+from RAG_term_normalisation.vectorstore_gene_synonyms import VectorStore_genes
 # from pipeline.process_disease_information import extract_disease_info
 import json
 import pandas as pd
@@ -19,34 +20,40 @@ model = 'gpt-4o'
 # Load the CSV file
 import pandas as pd
 
-abstracts_df = pd.read_csv('data/abstracts_20_random.csv')
+abstracts_df = pd.read_csv('data/abstracts_posters_esmo.csv')
+# abstracts_df = pd.read_csv('data/abstracts_20_random.csv')
 
 pages_processed_dir = 'data/production/processed_pages'
 pages_parsed_dir = f'data/production/parsed_pages_{model}'
 os.makedirs(pages_parsed_dir, exist_ok=True)   
 
-vectorstore = initialize_vectorstore()
+vectorstore = VectorStore_genes()
 
 for _, row in abstracts_df.iterrows():
     page_number = row['Abstract Number']
     abstract_text = f"Title: {row['Title']}\n\n{row['Abstract']}"
     
-    output_file = os.path.join(pages_parsed_dir, f'page_{page_number}.json')
+    output_file = os.path.join(pages_parsed_dir, f'page_{page_number}.csv')
     if os.path.exists(output_file):
         print(f"Skipping page {page_number} as it has already been processed.")
         continue
     
     print(f"Processing page {page_number} with model {model}...")
     
-    # %%
-    result = extract_target_from_abstract(abstract_text, model=model, vectorstore=vectorstore)
-    abstract_dict = {"Target": result} if result else {"Target": None}
-    abstract_dict['text'] = abstract_text
-    abstract_dict['page_number'] = page_number
+    reasoning, potential_genes, gene_context, symbols_only, reasoning_second_prompt, targets = extract_target_from_abstract(abstract_text, model=model, vectorstore=vectorstore)
     
-    json_result = json.dumps(abstract_dict, indent=2)        
-    with open(output_file, 'w') as f:
-        f.write(json_result)
+    df = pd.DataFrame({
+        'page_number': [page_number],
+        'text': [abstract_text],
+        'reasoning': [reasoning],
+        'potential_genes': [potential_genes],
+        'gene_context': [gene_context],
+        'symbols_only': [symbols_only],
+        'reasoning_second_prompt': [reasoning_second_prompt],
+        'target': [targets],
+    })
+    
+    df.to_csv(output_file, index=False)
 
 
 
