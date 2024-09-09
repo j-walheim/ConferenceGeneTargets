@@ -6,8 +6,9 @@ langchain-core
 langchain-groq
 langchain
 langchain_mistralai
-airflow
+#airflow
 faiss-cpu
 sentence-transformers
 biomart
 pyarrow
+openai
