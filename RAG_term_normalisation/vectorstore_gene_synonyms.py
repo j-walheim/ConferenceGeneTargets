@@ -129,31 +129,43 @@ class VectorStore_genes:
             
             time.sleep(1)
             
-    def retrieve(self,index_name, query):
-        
-        index = self.pc.Index(index_name)
+    def retrieve(self, index_name, query):
+        max_retries = 5
+        base_wait_time = 20
 
-        embedding = self.pc.inference.embed(
-            model="multilingual-e5-large",
-            inputs=[query],
-            parameters={
-                "input_type": "query"
-            }
-        )
-        
+        for attempt in range(max_retries):
+            try:
+                index = self.pc.Index(index_name)
 
-        results = index.query(
-        namespace="ns1",
-        vector=embedding[0].values,
-        top_k=10,
-        include_values=False,
-        include_metadata=True
-        )
+                embedding = self.pc.inference.embed(
+                    model="multilingual-e5-large",
+                    inputs=[query],
+                    parameters={
+                        "input_type": "query"
+                    }
+                )
 
-        metadata = [d['metadata'] for d in results['matches']]
-        
-        return metadata
+                results = index.query(
+                    namespace="ns1",
+                    vector=embedding[0].values,
+                    top_k=10,
+                    include_values=False,
+                    include_metadata=True
+                )
 
+                metadata = [d['metadata'] for d in results['matches']]
+                return metadata
 
+            except Exception as e:
+                print(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    wait_time = base_wait_time * (2 ** attempt)
+                    print(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print("Max retries reached. Returning empty list.")
+                    return []
+
+        return []  # should never be reached
 
 
