@@ -4,7 +4,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
-from pipeline.utils import initialize_vectorstore
+#from pipeline.utils import initialize_vectorstore
 from pipeline.process_target_information import extract_target_from_abstract
 from RAG_term_normalisation.vectorstore_gene_synonyms import VectorStore_genes
 # from pipeline.process_disease_information import extract_disease_info
@@ -29,16 +29,15 @@ os.makedirs(pages_parsed_dir, exist_ok=True)
 
 vectorstore = VectorStore_genes()
 
-for _, row in abstracts_df.iterrows():
+from tqdm import tqdm
+
+for _, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Processing abstracts"):
     page_number = row['Abstract Number']
     abstract_text = f"Title: {row['Title']}\n\n{row['Abstract']}"
     
     output_file = os.path.join(pages_parsed_dir, f'page_{page_number}.csv')
     if os.path.exists(output_file):
-        print(f"Skipping page {page_number} as it has already been processed.")
         continue
-    
-    print(f"Processing page {page_number} with model {model}...")
     
     reasoning, potential_genes, gene_context, symbols_only, reasoning_second_prompt, targets = extract_target_from_abstract(abstract_text, model=model, vectorstore=vectorstore)
     

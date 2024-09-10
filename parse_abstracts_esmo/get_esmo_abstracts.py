@@ -1,8 +1,10 @@
 from bs4 import BeautifulSoup
 import csv
 
+#fname = 'data/Posters - ESMO Congress 2024.html'
+fname = 'data/ESMO Congress 2024 - Conference Calendar - ESMO Congress 2024.html'
 # Read the HTML file
-with open('data/Posters - ESMO Congress 2024.html', 'r', encoding='utf-8') as file:
+with open(fname, 'r', encoding='utf-8') as file:
     html_content = file.read()
 
 # Parse the HTML content
@@ -12,7 +14,7 @@ soup = BeautifulSoup(html_content, 'html.parser')
 presentation_cards = soup.find_all('div', class_='card presentation')
 
 # Prepare CSV file
-with open('abstracts_detailed.csv', 'w', newline='', encoding='utf-8') as csvfile:
+with open('abstracts_2.csv', 'w', newline='', encoding='utf-8') as csvfile:
     fieldnames = ['Abstract Number', 'Title', 'Authors', 'Presentation Date', 'Topic', 'Abstract']
     csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     csv_writer.writeheader()
@@ -37,4 +39,4 @@ with open('abstracts_detailed.csv', 'w', newline='', encoding='utf-8') as csvfil
             'Abstract': abstract_text
         })
 
-print("CSV file 'abstracts_detailed.csv' has been created successfully.")
+print("CSV file 'abstracts_2.csv' has been created successfully.")

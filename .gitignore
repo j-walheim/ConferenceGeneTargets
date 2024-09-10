@@ -173,3 +173,5 @@ abstracts_all_tmp.json
 experimental/gene_info
 *.index
 *.csv
+.DS_Store
+.env

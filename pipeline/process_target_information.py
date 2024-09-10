@@ -260,23 +260,44 @@ def extract_target_from_abstract(abstract_text, model='groq', vectorstore=None):
     print("gene_context: ", gene_context)
 
     # Create the final prompt with the abstract and gene context
+
     second_prompt = create_prompt(abstract_text, potential_genes, gene_context, symbols_only)
     result_second_prompt = create_extraction_chain(second_prompt, llm)
-
-    reasoning_second_prompt = result_second_prompt.get('reasoning', [""])[0]
+    # dirty fix - sometimes the reasoning is not returned in the second prompt, so we try again with the second prompt
+    try:
+        reasoning_second_prompt = result_second_prompt.get('reasoning', [""])[0]
+    except: 
+        second_prompt = create_prompt(abstract_text, potential_genes, gene_context, symbols_only)
+        result_second_prompt = create_extraction_chain(second_prompt, llm)
+        reasoning_second_prompt = result_second_prompt.get('reasoning', [""])[0]
+        
     targets = result_second_prompt.get('extracted', [])
     
     return reasoning, potential_genes, gene_context, symbols_only, reasoning_second_prompt, targets
 
-#@task
-def create_jsonl_from_parsed_pages(**kwargs):
-#    ti = kwargs['ti']
-    model = 'groq'
-    parsed_pages_dir = os.path.join(STORAGE_DIR, ENVIRONMENT, f'parsed_pages_{model}') 
-    output_jsonl = os.path.join(STORAGE_DIR, ENVIRONMENT, f'parsed_pages_{model}.jsonl')
-    with open(output_jsonl, 'w') as jsonl_file:
-        for filename in sorted(glob.glob(os.path.join(parsed_pages_dir, 'page_*.json'))):
-            with open(filename, 'r') as json_file:
-                abstract_dict = json.load(json_file)
-                json.dump(abstract_dict, jsonl_file)
-                jsonl_file.write('\n')
+
+
+
+def extract_phase_from_abstract(abstract_text, model='groq', vectorstore=None):
+    llm = get_llm(model)
+
+    # First, extract potential genes from the abstract
+    initial_prompt = create_initial_prompt_all_genes(abstract_text)
+    potential_genes = create_extraction_chain(initial_prompt, llm, AllGenes)
+    
+    print("potential_genes: ", potential_genes)
+    # Get context for potential genes using vectorstore
+    gene_context = []
+    if vectorstore and len(potential_genes) > 0:
+        for gene in potential_genes:
+            context = vectorstore.rag('genes', gene)
+            gene_context.append(f"{gene}: {context}")
+    
+    print("gene_context: ", gene_context)
+
+    # Create the final prompt with the abstract and gene context
+    final_prompt = create_prompt(abstract_text, potential_genes, gene_context)
+    print(final_prompt)
+    
+    result = create_extraction_chain(final_prompt, llm, Target)
+    return result

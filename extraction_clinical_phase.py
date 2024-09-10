@@ -28,7 +28,7 @@ abstracts_df = pd.read_csv('data/abstracts_posters_esmo.csv')
 langfuse = Langfuse()
 
 # Create temporary folder if it doesn't exist
-temp_folder = 'data/temporary_stage'
+temp_folder = 'data/temporary_phase'
 os.makedirs(temp_folder, exist_ok=True)
 
 
