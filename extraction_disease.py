@@ -19,7 +19,7 @@ load_dotenv()
 
 # Set random seed
 random.seed(1)
-model = 'groq'#'groq'
+model = 'gpt-4o'#'groq'
 llm = get_llm(model)
 
 # Load the CSV file

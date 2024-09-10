@@ -5,31 +5,46 @@ from dotenv import load_dotenv
 import json
 from openai import AzureOpenAI,RateLimitError
 import requests
-from RAG_term_normalisation.vectorstore_gene_synonyms import VectorStore_genes
+from pipeline.vectorstore_gene_synonyms import VectorStore_genes
 import time
 import re
 from langfuse.decorators import observe, langfuse_context
+from openai import OpenAI
 
 load_dotenv()
 
-# def initialize_vectorstore():
-#     # Prepare disease and gene synonyms
-#     disease_synonyms = prepare_disease_synonyms()
-#     gene_synonyms = prepare_gene_synonyms()
-#     vectorstore = VectorStore()
-#     vectorstore.prepare_lookup(gene_synonyms, 'genes', 'Symbol', 'Synonyms', description_col='description')
-#     vectorstore.prepare_lookup(disease_synonyms, 'diseases', 'disease', 'synonym')
-#     vectorstore.prepare_vectorstores()
-#     return vectorstore
+
+class SambanovaAPI:
+    def __init__(self):
+        self.client = OpenAI(
+            base_url=os.getenv("SAMBANOVA_API_URL"),
+            api_key=os.getenv("SAMBANOVA_API_KEY")
+        )
+
+    def chat(self, messages):
+        try:
+            completion = self.client.chat.completions.create(
+                model="Meta-Llama-3.1-70B-Instruct",
+                messages=messages,
+                stream=True
+            )
+            response = ""
+            for chunk in completion:
+                response += chunk.choices[0].delta.content or ""
+            return response
+        except Exception as e:
+            print(f"An error occurred while calling SambaNova API: {e}")
+            return None
 
 def get_llm(model='groq'):
     if model == 'mistral':
         return MistralAPI()
     elif model == "gpt-4o":
         return AzureOpenAIAPI()
+    elif model == "sambanova":
+        return SambanovaAPI()
     else:
         return GroqAPI()
-
 class MistralAPI:
     def __init__(self):
         self.api_key = os.getenv("MISTRAL_API_KEY")
@@ -59,8 +74,8 @@ class AzureOpenAIAPI:
         
 
     def chat(self, messages):
-        max_retries = 5
-        retry_delay = 20
+        max_retries = 10
+        retry_delay = 30
 
         for attempt in range(max_retries):
             try:
@@ -72,10 +87,12 @@ class AzureOpenAIAPI:
                 return response_message.content
             except RateLimitError as e:
                 if attempt < max_retries - 1:
+                    print(f"Rate limit error encountered: {str(e)}")
                     print(f"Rate limit exceeded. Attempt {attempt + 1}/{max_retries}. Waiting for {retry_delay} seconds before retrying...")
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
                 else:
+                    print(f"Error encountered: {str(e)}")
                     print("Max retries reached. Continuing with the next task.")
                     return None  # Or a default message indicating the failure
             except Exception as e:
@@ -88,24 +105,41 @@ class GroqAPI:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
+        
 
     def chat(self, messages):
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": "llama-3.1-70b-versatile",
-            "messages": messages,
-            "temperature": 0
-        }
-        response = requests.post(self.base_url, headers=headers, json=data)
-        return response.json()['choices'][0]['message']['content']
+        n_attempts = 0
+        temperature = 0
+        while True:
+            try:
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": "llama-3.1-70b-versatile",
+                    "messages": messages,
+                    "temperature": temperature
+                }
+                response = requests.post(self.base_url, headers=headers, json=data)
+                response = response.json()['choices'][0]['message']['content']
+                
+                return response
+            except: 
+                if n_attempts >= 10:
+                    print("Could not get response from Groq API. Retrying...")
+                    return None
+                n_attempts += 1
+                time.sleep(10)
+                temperature = temperature + .5
+                print("Could not get response from Groq API. Retrying...")
 
 def create_extraction_chain(prompt, llm):
     messages = [
         {"role": "user", "content": prompt}
     ]
+
+
     response = llm.chat(messages)
 
     reasoning = re.findall(r'<reasoning>(.*?)</reasoning>', response, re.DOTALL)
