@@ -1,35 +1,28 @@
-# %% 
 from typing import List, Optional
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
-#from pipeline.utils import initialize_vectorstore
 from pipeline.process_target_information import extract_target_from_abstract
-from RAG_term_normalisation.vectorstore_gene_synonyms import VectorStore_genes
-# from pipeline.process_disease_information import extract_disease_info
-import json
+from pipeline.vectorstore_gene_synonyms import VectorStore_genes
+from tqdm import tqdm
 import pandas as pd
 import os
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
 model = 'gpt-4o'
-# %% 
+
 # Load the CSV file
-import pandas as pd
-
 abstracts_df = pd.read_csv('data/abstracts_posters_esmo.csv')
-# abstracts_df = pd.read_csv('data/abstracts_20_random.csv')
 
-pages_processed_dir = 'data/production/processed_pages'
-pages_parsed_dir = f'data/production/parsed_pages_{model}'
+abstracts_df =  abstracts_df.head(2)
+
+pages_parsed_dir = f'data/temporary_genes_{model}'
 os.makedirs(pages_parsed_dir, exist_ok=True)   
 
 vectorstore = VectorStore_genes()
-
-from tqdm import tqdm
 
 for _, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Processing abstracts"):
     page_number = row['Abstract Number']
@@ -53,8 +46,3 @@ for _, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Proce
     })
     
     df.to_csv(output_file, index=False)
-
-
-
-
-# %%

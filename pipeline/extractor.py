@@ -25,19 +25,8 @@ class Extractor:
     @observe(as_type="generation")
     def get_llm_response(self, msg):
         llm = get_llm(self.model)
+        return llm.chat(msg)
 
-        max_retries = 5
-        for attempt in range(max_retries):
-            try:
-                return llm.chat(msg)
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    wait_time = 20 * (attempt + 1)
-                    print(f"Error occurred: {e}. Retrying in {wait_time} seconds... (Attempt {attempt + 1}/{max_retries})")
-                    time.sleep(wait_time)
-                else:
-                    print(f"Max retries reached. Last error: {e}")
-                    raise
 
     def extract_info(self, response):
         extracted = {}
@@ -102,11 +91,23 @@ class GeneTargetExtractor(Extractor):
             with open(temp_file, 'r') as f:
                 return json.load(f)
         
-        potential_genes = initial_result.get('extracted', [])
-        gene_context, symbols_only = self.get_gene_context(potential_genes)
+        potential_genes = initial_result.get('genes', [])
         
-        response = self.get_llm_response(abstract_text, potential_genes, gene_context, symbols_only)
-        final_result = create_extraction_chain(response, get_llm(self.model))
+        max_retries = 5
+        gene_context = []
+        symbols_only = []
+        for attempt in range(max_retries):
+            try:
+                gene_context, symbols_only = self.get_gene_context(potential_genes)
+                break  
+            except Exception as e:
+                print(f"Error occurred: {e}. Retrying in 20 seconds...")
+                time.sleep(20)
+
+        prompt = self.langfuse.get_prompt(self.prompt_name)
+        msg = prompt.compile(abstract=abstract_text, potential_genes=potential_genes, gene_context=gene_context, symbols_only=symbols_only)
+
+        response = self.get_llm_response(msg)
         
         result = {
             'Abstract Number': abstract_number,
@@ -115,8 +116,7 @@ class GeneTargetExtractor(Extractor):
             'initial_reasoning': initial_result.get('reasoning', ''),
             'gene_context': gene_context,
             'symbols_only': symbols_only,
-            'final_reasoning': final_result.get('reasoning', ''),
-            'targets': final_result.get('extracted', [])
+            **self.extract_info(response)
         }
         
         with open(temp_file, 'w') as f:
