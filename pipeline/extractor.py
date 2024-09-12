@@ -72,7 +72,7 @@ class InitialGeneExtractor(Extractor):
 
 class GeneTargetExtractor(Extractor):
     def __init__(self, model='groq'):
-        super().__init__('gene_target', 'gene_target', ['reasoning', 'answer'], model)
+        super().__init__('gene_target', 'gene_target', ['reasoning', 'gene_target'], model)
         self.vectorstore = VectorStore_genes()
 
     def get_gene_context(self, potential_genes):
