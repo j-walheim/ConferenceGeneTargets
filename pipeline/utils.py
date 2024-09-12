@@ -14,54 +14,15 @@ from openai import OpenAI
 load_dotenv()
 
 
-class SambanovaAPI:
-    def __init__(self):
-        self.client = OpenAI(
-            base_url=os.getenv("SAMBANOVA_API_URL"),
-            api_key=os.getenv("SAMBANOVA_API_KEY")
-        )
-
-    def chat(self, messages):
-        try:
-            completion = self.client.chat.completions.create(
-                model="Meta-Llama-3.1-70B-Instruct",
-                messages=messages,
-                stream=True
-            )
-            response = ""
-            for chunk in completion:
-                response += chunk.choices[0].delta.content or ""
-            return response
-        except Exception as e:
-            print(f"An error occurred while calling SambaNova API: {e}")
-            return None
 
 def get_llm(model='groq'):
-    if model == 'mistral':
-        return MistralAPI()
-    elif model == "gpt-4o":
+    if model == "gpt-4o":
         return AzureOpenAIAPI()
-    elif model == "sambanova":
-        return SambanovaAPI()
     else:
         return GroqAPI()
-class MistralAPI:
-    def __init__(self):
-        self.api_key = os.getenv("MISTRAL_API_KEY")
-        self.base_url = "https://api.mistral.ai/v1/chat/completions"
 
-    def chat(self, messages):
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": "mistral-large-latest",
-            "messages": messages,
-            "temperature": 0
-        }
-        response = requests.post(self.base_url, headers=headers, json=data)
-        return response.json()['choices'][0]['message']['content']
+
+
 
 class AzureOpenAIAPI:
     def __init__(self):
