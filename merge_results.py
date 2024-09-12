@@ -39,7 +39,7 @@ def load_csv_files(directory):
     
     return pd.concat(dataframes, ignore_index=True)
 # Load JSON files from data/temporary_indication
-indication_df = load_json_files('data/temporary_indication_groq')
+indication_df = load_json_files('data/temporary_indication_gpt4o')
 indication_df = indication_df.drop(columns=['Abstract Text'])
 # Load JSON files from data/temporary_stage
 stage_df = load_json_files('data/temporary_phase')
@@ -53,6 +53,10 @@ if stage_df.empty:
 # Print column names for debugging
 print("Indication columns:", indication_df.columns)
 print("Stage columns:", stage_df.columns)
+
+# store both dataframes in data folder
+indication_df.to_csv('indication_df.csv', index=False)
+stage_df.to_csv('stage_df.csv', index=False)
 
 # Merge dataframes by "Abstract Number" if both dataframes have this column
 if 'Abstract Number' in indication_df.columns and 'Abstract Number' in stage_df.columns:
