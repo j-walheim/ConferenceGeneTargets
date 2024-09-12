@@ -2,7 +2,7 @@ import random
 import pandas as pd
 from langfuse import Langfuse
 from langfuse.decorators import observe
-from pipeline.utils import get_llm
+from pipeline.llm_client import get_llm
 from dotenv import load_dotenv
 import re
 import os
@@ -15,7 +15,7 @@ from pipeline.extractor import IndicationExtractor, PhaseExtractor
 # Load environment variables and initialize
 load_dotenv()
 random.seed(1)
-model = 'gpt-4o'
+model = 'gpt-4o-mini'
 llm = get_llm(model)
 abstracts_df = pd.read_csv('data/abstracts_posters_esmo.csv')
 abstracts_df = abstracts_df.head(2)

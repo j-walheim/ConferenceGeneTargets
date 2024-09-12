@@ -6,10 +6,11 @@ from langfuse.decorators import observe
 import re
 import time
 import pandas as pd
-from pipeline.utils import get_llm
-
+from pipeline.llm_client import get_llm#, create_extraction_chain
+from pipeline.vectorstore_gene_synonyms import VectorStore_genes
 
 class Extractor:
+    langfuse = Langfuse() # add langfuse instance as static element
     def __init__(self, extraction_type, prompt_name, fields, model):
         self.extraction_type = extraction_type
         self.prompt_name = prompt_name
@@ -28,7 +29,7 @@ class Extractor:
         prompt = langfuse.get_prompt(self.prompt_name)
         msg = prompt.compile(abstract=abstract_text)
 
-        llm = get_llm(self.model)  # Use the model parameter to get the appropriate LLM
+        llm = get_llm(self.model)
 
         max_retries = 5
         for attempt in range(max_retries):
@@ -85,4 +86,87 @@ class IndicationExtractor(Extractor):
 
 class PhaseExtractor(Extractor):
     def __init__(self, model='groq'):
-        super().__init__('phase', 'Phase', ['phase', 'model'], model)        
+        super().__init__('phase', 'Phase', ['phase', 'model'], model)
+
+
+class InitialGeneExtractor(Extractor):
+    def __init__(self, model='groq'):
+        super().__init__('initial_gene', 'all_genes', ['reasoning', 'gene'], model)
+
+    def process_abstracts(self, abstracts_df):
+        results = []
+        for index, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Extracting initial genes"):
+            abstract_number = row['Abstract Number']
+            temp_file = os.path.join(self.temp_folder, f"{abstract_number}.json")
+            
+            if os.path.exists(temp_file):
+                with open(temp_file, 'r') as f:
+                    result = json.load(f)
+            else:
+                abstract_text = row['Title'] + ' ' + row['Abstract']
+                response = self.get_llm_response(abstract_text)
+                result = create_extraction_chain(response, get_llm(self.model))
+                result['Abstract Number'] = abstract_number
+                result['Abstract Text'] = abstract_text
+                
+                with open(temp_file, 'w') as f:
+                    json.dump(result, f)
+            
+            results.append(result)
+
+        return results
+
+
+class GeneTargetExtractor(Extractor):
+    def __init__(self, model='groq'):
+        super().__init__('gene_target', 'gene_target', ['reasoning', 'answer'], model)
+        self.vectorstore = VectorStore_genes()
+
+    def get_gene_context(self, potential_genes):
+        gene_context = []
+        symbols_only = []
+        for gene in potential_genes:
+            context = self.vectorstore.retrieve('gene-index', gene)
+            symbols_only.extend([item['symbol'] for item in context])
+            gene_context.append(f"{gene}: {context}")
+        return gene_context, symbols_only
+
+    def process_abstracts(self, abstracts_df, initial_results):
+        results = []
+        for index, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Extracting gene targets"):
+            abstract_number = row['Abstract Number']
+            temp_file = os.path.join(self.temp_folder, f"{abstract_number}.json")
+            
+            if os.path.exists(temp_file):
+                with open(temp_file, 'r') as f:
+                    result = json.load(f)
+            else:
+                abstract_text = row['Title'] + ' ' + row['Abstract']
+                initial_result = initial_results[index]
+                potential_genes = initial_result.get('extracted', [])
+                
+                gene_context, symbols_only = self.get_gene_context(potential_genes)
+                
+                response = self.get_llm_response(abstract_text, potential_genes, gene_context, symbols_only)
+                final_result = create_extraction_chain(response, get_llm(self.model))
+                
+                result = {
+                    'Abstract Number': abstract_number,
+                    'Abstract Text': abstract_text,
+                    'potential_genes': potential_genes,
+                    'initial_reasoning': initial_result.get('reasoning', ''),
+                    'gene_context': gene_context,
+                    'symbols_only': symbols_only,
+                    'final_reasoning': final_result.get('reasoning', ''),
+                    'targets': final_result.get('extracted', [])
+                }
+                
+                with open(temp_file, 'w') as f:
+                    json.dump(result, f)
+            
+            results.append(result)
+
+        results_df = pd.DataFrame(results)
+        results_df.to_csv(f'{self.extraction_type}_extraction_results.csv', index=False)
+        
+        print(f"{self.extraction_type.capitalize()} extraction completed and results exported to '{self.extraction_type}_extraction_results.csv'")
