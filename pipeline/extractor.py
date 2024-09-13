@@ -35,10 +35,10 @@ class Extractor:
             extracted[field] = match.group(1).strip() if match else "n/a"
         return extracted
 
-    def process_abstract(self, abstract_number, abstract_text):
+    def process_abstract(self, abstract_number, abstract_text, overwriteExisting = False):
         temp_file = os.path.join(self.temp_folder, f"{abstract_number}.json")
         
-        if os.path.exists(temp_file):
+        if os.path.exists(temp_file) and not overwriteExisting:
             with open(temp_file, 'r') as f:
                 return json.load(f)
         
@@ -84,7 +84,7 @@ class GeneTargetExtractor(Extractor):
             gene_context.append(f"{gene}: {context}")
         return gene_context, symbols_only
 
-    def process_abstract(self, abstract_number, abstract_text, initial_result):
+    def process_abstract(self, abstract_number, abstract_text, initial_result, overwriteExisting = False):
         temp_file = os.path.join(self.temp_folder, f"{abstract_number}.json")
         
         if os.path.exists(temp_file):
