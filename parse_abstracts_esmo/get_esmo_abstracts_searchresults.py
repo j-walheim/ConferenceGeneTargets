@@ -2,7 +2,8 @@ import csv
 from bs4 import BeautifulSoup
 
 # Read the HTML file
-with open("data/ESMO Congress 2024 - Conference Calendar - ESMO Congress 2024.html", "r") as file:
+fname = 'data/ESMO_nonposters.html'
+with open(fname, "r") as file:
     html_content = file.read()
 
 # Create a BeautifulSoup object
@@ -11,9 +12,9 @@ soup = BeautifulSoup(html_content, "html.parser")
 # Find all the abstract divs
 abstract_divs = soup.find_all("div", class_="abstract")
 # Open a CSV file for writing
-with open("abstracts.csv", "w", newline="", encoding="utf-8") as csvfile:
+with open("data/abstracts_orals.csv", "w", newline="", encoding="utf-8") as csvfile:
     writer = csv.writer(csvfile)
-    writer.writerow(["Title", "Presentation Number", "Speakers", "Abstract"])
+    writer.writerow(["Abstract Number", "Title", "Authors", "Abstract"])
 
     for abstract_div in abstract_divs:
         # Find the title
@@ -44,6 +45,10 @@ with open("abstracts.csv", "w", newline="", encoding="utf-8") as csvfile:
         abstract_text = abstract_div.text.strip()
 
         # Write the extracted information to the CSV file
-        writer.writerow([title, number, speakers, abstract_text])
+        writer.writerow([number, title, speakers, abstract_text])
+
+
+
+
 
 print("Extraction complete. Results saved to abstracts.csv")
