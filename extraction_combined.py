@@ -9,12 +9,19 @@ from pipeline.extractor import IndicationExtractor, PhaseExtractor, InitialGeneE
 # Load environment variables and initialize
 load_dotenv()
 random.seed(1)
-model = 'gpt-4o-mini'
+#model = 'gpt-4o-mini'
+#model = 'groq'
+model = 'gpt-4o'
 llm = get_llm(model)
 
+
 # Load the CSV file
-abstracts_df = pd.read_csv('data/abstracts_posters_esmo.csv')
-abstracts_df = abstracts_df.head(2)  # For testing, remove this line for full dataset
+abstracts_df = pd.read_csv('data/abstracts_talks.csv')
+#abstracts_df = abstracts_df.head(2)  # For testing, remove this line for full dataset
+
+# Filter abstracts containing 'background'
+abstracts_df = abstracts_df[abstracts_df['Abstract'].str.contains('background', case=False, na=False)]
+
 
 # Initialize extractors
 indication_extractor = IndicationExtractor(model)
@@ -27,6 +34,7 @@ indication_results = []
 phase_results = []
 initial_gene_results = []
 gene_target_results = []
+
 
 # Main loop to process abstracts
 for _, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Processing abstracts"):
@@ -49,10 +57,49 @@ for _, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Proce
     gene_target_result = gene_target_extractor.process_abstract(abstract_number, abstract_text, initial_gene_result)
     gene_target_results.append(gene_target_result)
 
-# Convert results to DataFrames and save to CSV
-pd.DataFrame(indication_results).to_csv('data/indication_extraction_results.csv', index=False)
-pd.DataFrame(phase_results).to_csv('data/phase_extraction_results.csv', index=False)
-pd.DataFrame(initial_gene_results).to_csv('data/initial_gene_extraction_results.csv', index=False)
-pd.DataFrame(gene_target_results).to_csv('data/gene_target_extraction_results.csv', index=False)
+# Convert results to DataFrames
+indication_df = pd.DataFrame(indication_results)
+phase_df = pd.DataFrame(phase_results)
+initial_gene_df = pd.DataFrame(initial_gene_results)
+gene_target_df = pd.DataFrame(gene_target_results)
 
-print("Extraction completed. Results saved to CSV files.")
+# Merge all results based on 'Abstract Number'
+extraction_results = pd.concat([indication_df, phase_df, initial_gene_df, gene_target_df], axis=1)
+extraction_results = extraction_results.loc[:,~extraction_results.columns.duplicated()]
+
+# Save the merged results to CSV
+extraction_results.to_csv('data/merged_extraction_results.csv', index=False)
+
+# Print column names of the resulting file
+print("Column names of the merged results:")
+print(extraction_results.columns.tolist())
+
+print("Extraction completed. Merged results saved to 'data/merged_extraction_results.csv'.")
+
+
+# Provide final extraction results for website
+merged_data = pd.read_csv('data/extraction_results.csv')
+
+# Select and rename the desired columns from merged_data
+selected_columns = {
+    'Abstract Number': 'Abstract Number',
+    'Abstract Text_x': 'Abstract Text',
+    'Extracted Indication': 'Extracted Indication',
+    'Indication Subtype': 'Indication Subtype',
+    'Extracted Phase': 'Extracted Phase',
+    'Preclinical model': 'Preclinical model'
+}
+
+merged_data = merged_data[list(selected_columns.keys())].rename(columns=selected_columns)
+
+# Merge extraction_results with merged_data
+final_results = pd.merge(merged_data, extraction_results, on='Abstract Number', how='outer')
+
+# Save the final results to CSV
+final_results.to_csv('data/final_extraction_results.csv', index=False)
+
+# Print column names of the resulting file
+print("Column names of the final results:")
+print(final_results.columns.tolist())
+
+print("Extraction completed. Final results saved to 'data/final_extraction_results.csv'.")
