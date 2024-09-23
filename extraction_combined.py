@@ -9,14 +9,12 @@ from pipeline.extractor import IndicationExtractor, PhaseExtractor, InitialGeneE
 # Load environment variables and initialize
 load_dotenv()
 random.seed(1)
-#model = 'gpt-4o-mini'
-#model = 'groq'
 model = 'gpt-4o'
 llm = get_llm(model)
 
 
 # Load the CSV file
-abstracts_df = pd.read_csv('data/abstracts_talks.csv')
+abstracts_df = pd.read_csv('data/input/abstracts_talks.csv')
 #abstracts_df = abstracts_df.head(2)  # For testing, remove this line for full dataset
 
 # Filter abstracts containing 'background'
@@ -77,29 +75,29 @@ print(extraction_results.columns.tolist())
 print("Extraction completed. Merged results saved to 'data/merged_extraction_results.csv'.")
 
 
-# Provide final extraction results for website
-merged_data = pd.read_csv('data/extraction_results.csv')
+# # Provide final extraction results for website
+# merged_data = pd.read_csv('data/merged_extraction_results.csv')
 
-# Select and rename the desired columns from merged_data
-selected_columns = {
-    'Abstract Number': 'Abstract Number',
-    'Abstract Text_x': 'Abstract Text',
-    'Extracted Indication': 'Extracted Indication',
-    'Indication Subtype': 'Indication Subtype',
-    'Extracted Phase': 'Extracted Phase',
-    'Preclinical model': 'Preclinical model'
-}
+# # Select and rename the desired columns from merged_data
+# selected_columns = {
+#     'Abstract Number': 'Abstract Number',
+#     'Abstract Text_x': 'Abstract Text',
+#     'Extracted Indication': 'Extracted Indication',
+#     'Indication Subtype': 'Indication Subtype',
+#     'Extracted Phase': 'Extracted Phase',
+#     'Preclinical model': 'Preclinical model'
+# }
 
-merged_data = merged_data[list(selected_columns.keys())].rename(columns=selected_columns)
+# merged_data = merged_data[list(selected_columns.keys())].rename(columns=selected_columns)
 
-# Merge extraction_results with merged_data
-final_results = pd.merge(merged_data, extraction_results, on='Abstract Number', how='outer')
+# # Merge extraction_results with merged_data
+# final_results = pd.merge(merged_data, extraction_results, on='Abstract Number', how='outer')
 
-# Save the final results to CSV
-final_results.to_csv('data/final_extraction_results.csv', index=False)
+# # Save the final results to CSV
+# final_results.to_csv('data/final_extraction_results.csv', index=False)
 
-# Print column names of the resulting file
-print("Column names of the final results:")
-print(final_results.columns.tolist())
+# # Print column names of the resulting file
+# print("Column names of the final results:")
+# print(final_results.columns.tolist())
 
-print("Extraction completed. Final results saved to 'data/final_extraction_results.csv'.")
+# print("Extraction completed. Final results saved to 'data/final_extraction_results.csv'.")
