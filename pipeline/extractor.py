@@ -57,6 +57,11 @@ class Extractor:
         
         return result
 
+
+class ModalityExtractor(Extractor):
+    def __init__(self, model='groq'):
+        super().__init__('modality', 'Modality', ['reasoning', 'modality', 'details_modality','therapeutic_agents'], model)
+
 class IndicationExtractor(Extractor):
     def __init__(self, model='groq'):
         super().__init__('indication', 'GetIndication', ['indication', 'subtype'], model)

@@ -4,14 +4,13 @@ from langfuse import Langfuse
 from dotenv import load_dotenv
 from tqdm import tqdm
 from pipeline.llm_client import get_llm
-from pipeline.extractor import IndicationExtractor, PhaseExtractor, InitialGeneExtractor, GeneTargetExtractor
+from pipeline.extractor import IndicationExtractor, PhaseExtractor, InitialGeneExtractor, GeneTargetExtractor, ModalityExtractor
 
 # Load environment variables and initialize
 load_dotenv()
 random.seed(1)
 model = 'gpt-4o'
 llm = get_llm(model)
-
 
 # Load the CSV file
 abstracts_df = pd.read_csv('data/input/abstracts_talks.csv')
@@ -22,6 +21,7 @@ abstracts_df = abstracts_df[abstracts_df['Abstract'].str.contains('background', 
 
 
 # Initialize extractors
+modality_extractor = ModalityExtractor(model)
 indication_extractor = IndicationExtractor(model)
 phase_extractor = PhaseExtractor(model)
 initial_gene_extractor = InitialGeneExtractor(model)
@@ -32,12 +32,16 @@ indication_results = []
 phase_results = []
 initial_gene_results = []
 gene_target_results = []
-
+modality_results = []
 
 # Main loop to process abstracts
 for _, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Processing abstracts"):
     abstract_number = row['Abstract Number']
     abstract_text = f"Title: {row['Title']}\n\n{row['Abstract']}"
+
+    # Extract modality
+    modality_result = modality_extractor.process_abstract(abstract_number, abstract_text)
+    modality_results.append(modality_result)
 
     # # Extract indication
     indication_result = indication_extractor.process_abstract(abstract_number, abstract_text)
@@ -56,13 +60,14 @@ for _, row in tqdm(abstracts_df.iterrows(), total=len(abstracts_df), desc="Proce
     gene_target_results.append(gene_target_result)
 
 # Convert results to DataFrames
+modality_df = pd.DataFrame(modality_results)
 indication_df = pd.DataFrame(indication_results)
 phase_df = pd.DataFrame(phase_results)
 initial_gene_df = pd.DataFrame(initial_gene_results)
 gene_target_df = pd.DataFrame(gene_target_results)
 
 # Merge all results based on 'Abstract Number'
-extraction_results = pd.concat([indication_df, phase_df, initial_gene_df, gene_target_df], axis=1)
+extraction_results = pd.concat([indication_df, phase_df, initial_gene_df, gene_target_df, modality_df], axis=1)
 extraction_results = extraction_results.loc[:,~extraction_results.columns.duplicated()]
 
 # Save the merged results to CSV
