@@ -80,16 +80,7 @@ class LLMClient:
         }
         response = requests.post(self.base_url, headers=headers, json=data)
         return response.json()['choices'][0]['message']['content']
-# def create_extraction_chain(prompt, llm):
-#     messages = [{"role": "user", "content": prompt}]
-#     response = llm.chat(messages)
 
-#     result = {
-#         "reasoning": re.findall(r'<reasoning>(.*?)</reasoning>', response, re.DOTALL),
-#         "extracted": [item.strip() for item in ','.join(re.findall(r'<answer>(.*?)</answer>', response, re.DOTALL)).split(',') if item.strip()]
-#     }
-
-#     return result
 
 def get_llm(model='groq'):
     return LLMClient.create(model)
