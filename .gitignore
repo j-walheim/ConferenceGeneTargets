@@ -175,3 +175,4 @@ experimental/gene_info
 *.csv
 .DS_Store
 .env
+conference_gene_targets.db

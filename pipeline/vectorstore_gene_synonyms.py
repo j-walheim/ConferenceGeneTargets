@@ -98,8 +98,7 @@ class VectorStore_genes:
         
         df_genes = self.prepareGenes()
   
-  
-#        df_genes = df_genes.head(180)
+
         batch_size = 96
 
         

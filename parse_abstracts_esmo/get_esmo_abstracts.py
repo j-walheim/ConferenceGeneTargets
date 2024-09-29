@@ -1,8 +1,7 @@
 from bs4 import BeautifulSoup
 import csv
 
-#fname = 'data/Posters - ESMO Congress 2024.html'
-fname = 'data/ESMO Congress 2024 - Conference Calendar - ESMO Congress 2024.html'
+fname = 'data/Posters - ESMO Congress 2024.html'
 # Read the HTML file
 with open(fname, 'r', encoding='utf-8') as file:
     html_content = file.read()
